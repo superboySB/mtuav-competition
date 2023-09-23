@@ -1,0 +1,30 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "make clean",
+        "type": "shell",
+        "command": "make",
+        "args": ["clean"],
+        "group": "build",
+        "options": {
+          "cwd": "${workspaceFolder}/libvroom-example"
+        }
+      },
+      {
+        "label": "make build",
+        "type": "shell",
+        "command": "make",
+        "args": [],
+        "group": {
+          "kind": "build",
+          "isDefault": true
+        },
+        "dependsOn": ["make clean"],
+        "options": {
+          "cwd": "${workspaceFolder}/libvroom-example"
+        }
+      }
+    ]
+  }
+  

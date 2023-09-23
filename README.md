@@ -16,7 +16,7 @@ docker exec -it mtuav /bin/bash
 ```
 它默认的entrypoint会启动`/mock_server/sim.sh`，当然如果有问题也可以手动启动这个脚本。之后，在客户端启动网址`http://<server-ip>:8888`，内网（本机工作站）下可以直接访问服务器。在未公开ip的服务器上，可以先在客户端进行端口转发`ssh -L 8888:localhost:8888 -p 17003 ps@36.189.234.178`。
 
-**（周一试试）**说实话我想试试在一个好机器里，把docker当虚拟机，在container里面做算法开发、同时前端运行，然后另外找一个配置不好的机器来看可视化
+**（周一试试）**说实话我想试试在一个好机器里，把docker当虚拟机，在container里面做算法开发、同时前端运行（本地调用50051的api），然后另外找一个配置不好的机器（可能是笔记本电脑、只映射8888端口）来看可视化
 
 
 
@@ -45,10 +45,22 @@ docker exec -it mtuav /bin/bash
 4. 之前群里提到的RL4CO，看看C++实现RL是否可以：https://github.com/kaist-silab/rl4co
 5. 考虑到其实这个比赛要么你就用learning，要么就用不到gpu，而我自己比较感兴趣的CUDA-enabled爆速求解器，fancy但不太好用，而且问题规模还不至于太大（从单机预览版的预设文件看，应该最多15个无人机、大概200-300个货物），可以先不考虑了。
 
+
+配置VROOM的样例
+```sh
+cd /workspace/mtuav-competition/libvroom-example 
+
+# 编译
+make clean && make -j8
+
+# 运行
+./libvroom-example
+```
+
 这两天我就先用商业软件来做个入门配置吧,后续我还是得手动实现
 ```sh
 # 生成机器校验码，用来去https://www.localsolver.com/my-licenses生成trial license，然后等待可以用了就开编
-cd /workspace/mtuav-competition && lskeygen
+cd /workspace/mtuav-competition/localsolver-example && lskeygen
 
 # 编译
 g++ tdcvrptw.cpp -I/opt/localsolver_12_0/include -llocalsolver120 -lpthread -o tdcvrptw
