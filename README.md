@@ -14,5 +14,5 @@ docker run -itd --name=mtuav --gpus all --privileged --network host -v ./mt-log:
 
 docker exec -it mtuav /bin/bash
 ```
-在客户端启动网址`http://localhost:8888`，内网（本机工作站）下可以直接访问服务器。在未公开ip地服务器上，可以在在客户端进行端口转发`ssh -L 5051:localhost:5051 -L 8888:localhost:8888 -p 17003 ps@36.189.234.178`
+在客户端启动网址`http://<server-ip>:8888`，内网（本机工作站）下可以直接访问服务器。在未公开ip地服务器上，可以先在客户端进行端口转发`ssh -L 50051:localhost:50051 -L 8888:localhost:8888 -p 17003 ps@36.189.234.178`
 
