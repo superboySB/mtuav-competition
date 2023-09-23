@@ -5,7 +5,8 @@ RUN echo "deb http://archive.ubuntu.com/ubuntu/ focal main restricted universe m
     && echo "deb http://archive.ubuntu.com/ubuntu/ focal-backports main restricted universe multiverse" >> /etc/apt/sources.list \
     && echo "deb http://archive.ubuntu.com/ubuntu/ focal-security main restricted universe multiverse" >> /etc/apt/sources.list
 
-RUN apt-get update && apt-get upgrade && apt-get install -y net-tools vim git htop cmake wget curl zip 
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y net-tools vim git htop cmake wget curl zip \
     unzip python3-pip build-essential g++ libssl-dev libasio-dev libglpk-dev pkg-config gdb
 
 # VROOM的C++算法包
