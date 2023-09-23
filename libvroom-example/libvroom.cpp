@@ -250,10 +250,10 @@ void run_example_with_custom_matrix() {
   vroom::Location v_start(0); // index in the provided matrix.
   vroom::Location v_end(3);   // index in the provided matrix.
 
-  vroom::Vehicle v(0,       // id
+  vroom::Vehicle v1(0,       // id
                    v_start, // start
                    v_end);  // end
-  problem_instance.add_vehicle(v);
+  problem_instance.add_vehicle(v1);
 
   // Define jobs with id and index of location in the matrix
   // (coordinates are optional). Constraints that are not required can
