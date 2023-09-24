@@ -16,7 +16,7 @@ docker exec -it mtuav /bin/bash
 ```
 它默认的entrypoint会启动`/mock_server/sim.sh`，当然如果有问题也可以手动启动这个脚本。之后，在客户端启动网址`http://<server-ip>:8888`，内网（本机工作站）下可以直接访问服务器。在未公开ip的服务器上，可以先在客户端进行端口转发`ssh -L 8888:localhost:8888 -p 17003 ps@36.189.234.178`。
 
-**（周一试试）**说实话我想试试在一个好机器里，把docker当虚拟机，在container里面做算法开发、同时前端运行（本地调用50051的api），然后另外找一个配置不好的机器（可能是笔记本电脑、只映射8888端口）来看可视化
+**（周一试试）**说实话我想试试在一个好机器里，把docker当虚拟机，在container里面做算法开发、同时前端运行（本地调用50051的api），然后另外找一个配置不好的机器（可能是笔记本电脑、只映射8888端口）来看可视化。如果有对GPU的强依赖，那最好换一个镜像，然后把目前meituan的镜像作为一个服务调用，依然还是两个contrainer在服务器通信，本机调用可视化查看，还是这条路子。
 
 
 
@@ -47,7 +47,7 @@ docker exec -it mtuav /bin/bash
 
 配置rl4co的样例
 ```sh
-ss
+cd rl4co-example && python mdpdp.py
 ```
 
 配置VROOM的样例
@@ -79,3 +79,26 @@ python tdcvrptw.py instances/R101.25.txt
 
 ## 0924
 加一个接口案例用来巩固学习pybind11的用法
+```sh
+apt-get install libboost-program-options-dev libyaml-cpp-dev clang-tidy clang-format
+pip install pytest
+git clone https://github.com/pybind/pybind11.git 
+cd pybind11
+git checkout v2.5.0
+mkdir build && cd build && cmake .. && make -j8
+make install
+
+cd /workspace && git clone https://github.com/zijinoier/mater
+mkdir build
+cd build
+cmake ..
+make -j16 && make install
+
+python3 src/test_pybind.py
+```
+For detailed API of train_env, please `cd src` and see
+```sh
+import train_env as te
+help(te)
+```
+这部分还得细细研究，之前做EDA、还有篮球AI的时候天泽也都尝试引入过，但跑通后续、细节很多。这部分看情况也会加进docker、pybind-example里。
