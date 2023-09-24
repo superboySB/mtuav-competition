@@ -42,9 +42,13 @@ docker exec -it mtuav /bin/bash
 1. 与避障相关的path finding问题，或许可以解决无人机target中间的碰撞，例如可以把无人机从质点移动离散化为10m的方格移动，或尝试合进VRP的复杂约束中：[最新的方法（setting不太现实、因为无人机不能交换外卖）](https://kei18.github.io/tswap/)、[可视化（有一系列他的过去方法](https://github.com/kei18/mapf-visualizer)。我想把这个问题提出来做两层优化，主要还是仔细看了比赛文档：`**初赛有固定障碍物，复赛可能还会有移动障碍物**
 2. 这好像有一个特别相关的[开源VRP库](https://github.com/VROOM-Project/vroom)，我估计要主力从这个库发力去改，来满足所有约束
 3. 这好像是一个不讲武德的[闭源商业软件LocalSolver](https://www.localsolver.com/docs/last/exampletour/time-dependent-capacitated-vehicle-routing-problem-with-time-windows-tdcvrptw.html#)，实在太对口了，但应该不能直接拿来用（虽然我好想先用一下看看强者的结果hh、然后也好处理关注其它的约束），但咱说能不能用来生成ground truth来做learning呢：
-4. 之前群里提到的RL4CO，看看C++实现RL是否可以：https://github.com/kaist-silab/rl4co
+4. 之前群里提到的RL4CO，也有[类似settings](https://rl4co.readthedocs.io/en/latest/_collections/tutorials/2-solving-new-problem.html)，看看C++实现RL是否可以：https://github.com/kaist-silab/rl4co
 5. 考虑到其实这个比赛要么你就用learning，要么就用不到gpu，而我自己比较感兴趣的[CUDA-enabled爆速求解器](https://developer.nvidia.com/cuopt-logistics-optimization)，fancy但不太好搞，而且问题规模还不至于太大（从单机预览版的预设文件看，应该最多15个无人机、大概200-300个货物），可以先不考虑了。
 
+配置rl4co的样例
+```sh
+ss
+```
 
 配置VROOM的样例
 ```sh

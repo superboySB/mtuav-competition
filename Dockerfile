@@ -19,12 +19,15 @@ RUN echo "Cloning and installing vroom release ${VROOM_RELEASE}..." && \
     git checkout -q $VROOM_RELEASE && \
     make -C /workspace/vroom/src -j$(nproc)
 
-
 # LocalSolver
 WORKDIR /workspace
 RUN wget https://www.localsolver.com/downloads/12_0_20230915/LocalSolver_12_0_20230915_Linux64.run \
     && bash LocalSolver_12_0_20230915_Linux64.run \
     && pip install localsolver -i https://pip.localsolver.com
 
+
+# rl4co
+WORKDIR /workspace
+RUN git clone https://github.com/kaist-silab/rl4co && cd rl4co && pip install .
 
 WORKDIR /workspace
