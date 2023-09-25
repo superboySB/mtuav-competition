@@ -46,6 +46,7 @@ int main(int argc, const char* argv[]) {
         return -1;
     } else {
         LOG(INFO) << "Read map successfully.";
+    }
 
     // 下面使用测试账号仅用于登录单机版镜像（在线系统时，使用比赛下发的的用户名和密码）
     mtuav::Response r =
@@ -120,5 +121,4 @@ int main(int argc, const char* argv[]) {
     planner->StopTask();
     google::ShutdownGoogleLogging();
     return 0;
-}
 }

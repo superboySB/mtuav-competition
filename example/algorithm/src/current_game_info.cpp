@@ -1,7 +1,7 @@
 #include "current_game_info.h"
 #include "mtuav_sdk.h"
 
-// log打印
+// TODO 加log打印
 namespace mtuav::algorithm {
 
 std::shared_ptr<DynamicGameInfo> DynamicGameInfo::getDynamicGameInfoPtr() {

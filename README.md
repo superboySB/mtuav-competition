@@ -1,22 +1,44 @@
 # mtuav-competition
 低空经济智能飞行管理挑战赛 性能赛（BIT-LINC）
 
-# Requirements
+# 运行流程
+## 准备
 开始比赛前检查下主机的时区设置，要求为Beijing时间（UTC+8）；同时做一次时间同步
 ```sh
 sudo ntpdate -b -p 5 -u cn.ntp.org.cn
 ```
-直接下拉我魔改的dockerfile
+下拉美团、算法开发相关的docker镜像：
 ```sh
+docker pull marcobright2023/mtuav-competition:standalone
 docker build -t mtuav_image:1.0 .
-
-docker run -itd --name=mtuav --gpus all --privileged --network host -v ./mt-log:/mt-log mtuav_image:1.0
-
-docker exec -it mtuav /bin/bash
 ```
-它默认的entrypoint会启动`/mock_server/sim.sh`，当然如果有问题也可以手动启动这个脚本。之后，在客户端启动网址`http://<server-ip>:8888`，内网（本机工作站）下可以直接访问服务器。在未公开ip的服务器上，可以先在客户端进行端口转发`ssh -L 50052:localhost:50052 -p 17003 ps@36.189.234.178`。
+按照设计，需要starttask后才能走可视化界面，所以后台要先启动一个container用于可视化界面。最好每次编译好程序后，都反复重启这个container。基本运行流程为：启动镜像--启动sdk--打开可视化界面--算法执行--关闭sdk--关闭镜像。
 
-由于github限制，要先从官方SDK下载页面(http://dpurl.cn/tAObd2lz)里把整个`map/`文件夹拖进相应位置，然后确保启动`/mock_server/sim.sh`之后，再编译运行SDK
+拉好镜像后，首先启动美团镜像，并放置在后台
+```sh
+docker run -id --name=mtuav-vis -p 8888:8888 -p 50051:50051 -v ./mt-log:/mt-log marcobright2023/mtuavcompetition:standalone start
+```
+通常加载任务运行后，可以看到`./mt-log`中会有相应的日志打印，然后启动算法开发镜像，也放置在后台
+```sh
+docker run -itd --name=mtuav-alg --gpus all --privileged --network host mtuav_image:1.0
+```
+
+## [Main] 进入算法开发镜像里，不断迭代开发算法、启动SDK、打开可视化界面这一流程
+```sh
+docker exec -it mtuav-log /bin/bash
+```
+然后在container里面拉一下本repo的代码
+```sh
+git clone https://github.com/superboySB/mtuav-competition && cd mtuav-competition
+```
+由于github限制，要先从官方SDK下载页面(http://dpurl.cn/lLbhoTvz)里把`map/competition_map.bin`文件拖进相应位置（单机测试的时候暂不需要）。
+
+**[每次下拉更新代码后]**需要先重启美团镜像
+```sh
+docker stop mtuav-vis
+docker start mtuav-vis
+```
+确保服务器执行`netstat -tulp`中有`8888`的监听后，再编译源码运行SDK
 ```sh
 # 编译
 mkdir build && cd build && cmake .. && make && make install
@@ -24,8 +46,17 @@ mkdir build && cd build && cmake .. && make && make install
 # 运行
 ./mtuav_sdk_example
 ```
+之后，在客户机的浏览器启动网址`http://<server-ip>:8888`，内网（本机工作站）下可以直接该访问服务器。而在未公开ip的服务器上，可以先在客户端进行端口转发`ssh -L 8888:localhost:8888 -p 17003 ps@36.189.234.178`。**注意，SDK在StartTask 后不要退出，退出后服务会关闭任务，同时也会关闭可视化程序。**
 
-**（周一试试）**说实话我想试试在一个好机器里，把docker当虚拟机，在container里面做算法开发、同时前端运行（本地调用50051的api），然后另外找一个配置不好的机器（可能是笔记本电脑、只映射8888端口）来看可视化。如果有对GPU的强依赖，那最好换一个镜像，然后把目前meituan的镜像作为一个服务调用，依然还是两个contrainer在服务器通信，本机调用可视化查看，还是这条路子。
+
+## [Optional] 备选方案
+不想反复重启container的话，也可以打包成一个docker，手动启动可视化界面:
+```sh
+docker exec -it [container] bash
+cd manager/utmm/server
+node server.js
+```
+注意这个是临时方案，只用于演示，连接SDK前要先关闭。
 
 # 笔记
 ## 0923
@@ -85,7 +116,7 @@ python tdcvrptw.py instances/R101.25.txt
 ```
 
 ## 0924
-加一个接口案例用来巩固学习pybind11的用法
+加一个接口案例用来巩固学习pybind11的用法，安装部分已经加入了dockerfile中
 ```sh
 apt-get install libboost-program-options-dev libyaml-cpp-dev clang-tidy clang-format
 pip install pytest

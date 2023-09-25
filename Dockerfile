@@ -1,20 +1,18 @@
-FROM marcobright2023/mtuav-competition:standalone
-
-RUN echo "deb http://archive.ubuntu.com/ubuntu/ focal main restricted universe multiverse" > /etc/apt/sources.list \
-    && echo "deb http://archive.ubuntu.com/ubuntu/ focal-updates main restricted universe multiverse" >> /etc/apt/sources.list \
-    && echo "deb http://archive.ubuntu.com/ubuntu/ focal-backports main restricted universe multiverse" >> /etc/apt/sources.list \
-    && echo "deb http://archive.ubuntu.com/ubuntu/ focal-security main restricted universe multiverse" >> /etc/apt/sources.list
+FROM nvcr.io/nvidia/pytorch:20.12-py3
 
 ENV DEBIAN_FRONTEND=noninteractive
-RUN apt-get update && apt-get install -y net-tools vim git htop cmake wget curl zip \
-    unzip python3-pip build-essential g++ libssl-dev libasio-dev libglpk-dev pkg-config gdb \
-    libgoogle-glog-dev
+ENV LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8
+RUN locale-gen en_US.UTF-8
+RUN apt-get update && apt-get install -y tzdata net-tools vim git htop cmake wget curl zip \
+    unzip build-essential g++ libssl-dev libasio-dev libglpk-dev pkg-config gdb libgoogle-glog-dev \
+    libboost-program-options-dev libyaml-cpp-dev clang-tidy clang-format libyaml-cpp-dev
+RUN ntpdate -b -p 5 -u cn.ntp.org.cn
 
 # VROOM的C++算法包
 ARG VROOM_RELEASE=v1.13.0
 WORKDIR /workspace
 RUN echo "Cloning and installing vroom release ${VROOM_RELEASE}..." && \
-    git clone  --recurse-submodules https://github.com/VROOM-Project/vroom.git && \
+    git clone --recurse-submodules https://github.com/VROOM-Project/vroom.git && \
     cd vroom && \
     git fetch --tags && \
     git checkout -q $VROOM_RELEASE && \
@@ -30,4 +28,9 @@ RUN wget https://www.localsolver.com/downloads/12_0_20230915/LocalSolver_12_0_20
 WORKDIR /workspace
 RUN git clone https://github.com/kaist-silab/rl4co && cd rl4co && pip install .
 
+# pybind的一个例子
 WORKDIR /workspace
+RUN pip install pytest && git clone https://github.com/pybind/pybind11.git && cd pybind11 && git checkout v2.11.1 \
+    && mkdir build && cd build && cmake .. && make -j8 && make install
+RUN cd /workspace && git clone https://github.com/zijinoier/mater && cd mater && mkdir build && cd build && cmake .. \
+    && make -j16 && make install
