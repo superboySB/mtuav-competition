@@ -16,7 +16,7 @@ docker build -t mtuav_image:1.0 .
 
 拉好镜像后，首先启动美团镜像，并放置在后台
 ```sh
-docker run -id --name=mtuav-vis -p 8888:8888 -p 50051:50051 -v ./mt-log:/mt-log marcobright2023/mtuavcompetition:standalone start
+docker run -id --name=mtuav-vis -p 8888:8888 -p 50051:50051 -v ./mt-log:/mt-log marcobright2023/mtuav-competition:standalone start
 ```
 通常加载任务运行后，可以看到`./mt-log`中会有相应的日志打印，然后启动算法开发镜像，也放置在后台
 ```sh
@@ -31,7 +31,7 @@ docker exec -it mtuav-log /bin/bash
 ```sh
 git clone https://github.com/superboySB/mtuav-competition && cd mtuav-competition
 ```
-由于github限制，要先从官方SDK下载页面(http://dpurl.cn/lLbhoTvz)里把`map/competition_map.bin`文件拖进相应位置（单机测试的时候暂不需要）。
+由于github限制，要先从官方SDK下载页面(http://dpurl.cn/lLbhoTvz)里把`map/competition_map.bin`、`map/test_map.bin`文件拖进相应文件夹内（单机测试的时候暂不需要competition_map）。
 
 **[每次下拉更新代码后]**需要先重启美团镜像
 ```sh
@@ -46,7 +46,7 @@ mkdir build && cd build && cmake .. && make && make install
 # 运行
 ./mtuav_sdk_example
 ```
-之后，在客户机的浏览器启动网址`http://<server-ip>:8888`，内网（本机工作站）下可以直接该访问服务器。而在未公开ip的服务器上，可以先在客户端进行端口转发`ssh -L 8888:localhost:8888 -p 17003 ps@36.189.234.178`。**注意，SDK在StartTask 后不要退出，退出后服务会关闭任务，同时也会关闭可视化程序。**
+之后，在客户机的浏览器启动网址`http://<server-ip>:8888`，内网（本机工作站）下可以直接该访问服务器。而在未公开ip的服务器上，可以先在客户端进行端口转发`ssh -L 8888:localhost:8888 -p 17003 ps@36.189.234.178`。此时要选择文件在sdk的`visualization/test`内部，一定要同时选择两个`.txt`文件。**注意，SDK在StartTask 后不要退出，退出后服务会关闭任务，同时也会关闭可视化程序。**
 
 
 ## [Optional] 备选方案
