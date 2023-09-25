@@ -48,7 +48,7 @@ mkdir build && cd build && cmake .. && make && make install
 ```
 之后，在客户机的浏览器启动网址`http://<server-ip>:8888`，内网（本机工作站）下可以直接该访问服务器。此时m要选择文件在sdk的`visualization/test`内部，一定要同时选择两个`.txt`文件。**注意，SDK在StartTask 后不要退出，退出后服务会关闭任务，同时也会关闭可视化程序。**
 
-[TODO: 目前有问题、必须手动用备选方案启动manager里的start.sh] 在未公开ip的服务器上，可以先在客户端进行端口转发`ssh -L 8888:localhost:8888 -L 36225:localhost:36225 -L 37793:localhost:37793 -L 41461:localhost:41461 -p 17003 ps@36.189.234.178`。
+[TODO: 目前有问题、必须手动用备选方案启动manager里的start.sh] 在未公开ip的服务器上，可以先在客户端进行端口转发`ssh -L 8888:localhost:8888 -p 17003 ps@36.189.234.178`。
 
 
 ## [Optional] 备选方案
