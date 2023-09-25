@@ -25,7 +25,7 @@ docker run -itd --name=mtuav-alg --gpus all --privileged --network host mtuav_im
 
 ## [Main] 进入算法开发镜像里，不断迭代开发算法、启动SDK、打开可视化界面这一流程
 ```sh
-docker exec -it mtuav-log /bin/bash
+docker exec -it mtuav-alg /bin/bash
 ```
 然后在container里面拉一下本repo的代码
 ```sh
@@ -33,7 +33,7 @@ git clone https://github.com/superboySB/mtuav-competition && cd mtuav-competitio
 ```
 由于github限制，要先从官方SDK下载页面(http://dpurl.cn/lLbhoTvz)里把`map/competition_map.bin`、`map/test_map.bin`文件拖进相应文件夹内（单机测试的时候暂不需要competition_map）。
 
-**[每次下拉更新代码后]**需要先重启美团镜像
+**每次下拉更新代码后**，需要先重启美团镜像
 ```sh
 docker stop mtuav-vis
 docker start mtuav-vis
@@ -46,13 +46,15 @@ mkdir build && cd build && cmake .. && make && make install
 # 运行
 ./mtuav_sdk_example
 ```
-之后，在客户机的浏览器启动网址`http://<server-ip>:8888`，内网（本机工作站）下可以直接该访问服务器。而在未公开ip的服务器上，可以先在客户端进行端口转发`ssh -L 8888:localhost:8888 -p 17003 ps@36.189.234.178`。此时要选择文件在sdk的`visualization/test`内部，一定要同时选择两个`.txt`文件。**注意，SDK在StartTask 后不要退出，退出后服务会关闭任务，同时也会关闭可视化程序。**
+之后，在客户机的浏览器启动网址`http://<server-ip>:8888`，内网（本机工作站）下可以直接该访问服务器。此时m要选择文件在sdk的`visualization/test`内部，一定要同时选择两个`.txt`文件。**注意，SDK在StartTask 后不要退出，退出后服务会关闭任务，同时也会关闭可视化程序。**
+
+[TODO: 目前有问题、必须手动用备选方案启动manager里的start.sh] 在未公开ip的服务器上，可以先在客户端进行端口转发`ssh -L 8888:localhost:8888 -L 36225:localhost:36225 -L 37793:localhost:37793 -L 41461:localhost:41461 -p 17003 ps@36.189.234.178`。
 
 
 ## [Optional] 备选方案
-不想反复重启container的话，也可以打包成一个docker，手动启动可视化界面:
+如果浏览器实在看不了可视化，也可以手动启动可视化界面:
 ```sh
-docker exec -it [container] bash
+docker exec -it mtuav-vis /bin/bash
 cd manager/utmm/server
 node server.js
 ```
