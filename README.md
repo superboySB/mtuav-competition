@@ -33,10 +33,10 @@ git clone https://github.com/superboySB/mtuav-competition && cd mtuav-competitio
 ```
 由于github限制，要先从官方SDK下载页面(http://dpurl.cn/lLbhoTvz)里把`map/competition_map.bin`、`map/test_map.bin`文件拖进相应文件夹内（单机测试的时候暂不需要competition_map）。
 
-**每次下拉更新代码后**，需要先重启美团镜像
+**每次下拉更新代码、需要重新运行算法时**，需要先重启美团镜像（必要时也可以重启算法container，相当于重启）
 ```sh
-docker stop mtuav-vis
-docker start mtuav-vis
+docker stop mtuav-vis mtuav-alg
+docker start mtuav-vis mtuav-alg
 ```
 确保服务器执行`netstat -tulp`中有`8888`的监听后，再编译源码运行SDK
 ```sh
