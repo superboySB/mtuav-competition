@@ -1,7 +1,0 @@
-koa is listening in 8888
-config is  { scene_manager_ip: '127.0.0.1', scene_manager_port: '8088' }
-error:Error: connect ECONNREFUSED 127.0.0.1:8088
-error:Error: connect ECONNREFUSED 127.0.0.1:8088
-error:Error: connect ECONNREFUSED 127.0.0.1:8088
-koa is listening in 8888
-config is  { scene_manager_ip: '127.0.0.1', scene_manager_port: '8088' }

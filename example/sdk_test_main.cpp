@@ -62,7 +62,7 @@ int main(int argc, const char* argv[]) {
     int task_num = planner->GetTaskCount();
     LOG(INFO) << "Task num: " << task_num;
     // TODO 选手指定比赛任务索引
-    int task_idx = 3;
+    int task_idx = 0;
     // 获取比赛任务指针
     auto task = planner->QueryTask(task_idx);
     if (task == nullptr) {
