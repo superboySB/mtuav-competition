@@ -1,17 +1,18 @@
 {
     "configurations": [
-        {
-            "name": "Linux",
-            "includePath": [
-                "/workspace/vroom/src/**",
-                "/usr/include/c++/9"  // 这里是g++ 9的标准库路径，根据你的环境进行修改
-            ],
-            "defines": [],
-            "compilerPath": "/usr/bin/g++",
-            "cStandard": "c11",
-            "cppStandard": "c++17",
-            "intelliSenseMode": "gcc-x64"
-        }
+      {
+        "name": "Linux",
+        "includePath": [
+          "${workspaceFolder}/**",
+          "/workspace/vroom/src/**",
+          "/home/caijunqi02/work/the_system/catkin_simulation_system/devel/include/simulation_system"
+        ],
+        "defines": [],
+        "compilerPath": "/usr/bin/gcc",
+        "cStandard": "c11",
+        "cppStandard": "c++17",
+        "intelliSenseMode": "clang-x64"
+      }
     ],
     "version": 4
 }

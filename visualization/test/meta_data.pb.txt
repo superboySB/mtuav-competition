@@ -1,0 +1,37 @@
+version_info {
+  map_version: "Meituan-Colmap V1.2.0"
+}
+region_info {
+  region_id: "UNKNOWN"
+  region_name: "UNKNOWN"
+}
+time_info {
+  first_mapping_date: "Tue Aug 15 22:01:15 2023\n"
+}
+map_type: "planning_map"
+ref_gps {
+  latitude: 22.63985958
+  longitude: 114.01372831
+  altitude: 0
+}
+bounding_box {
+  min_x: -472
+  min_y: -276
+  min_z: -44
+  max_x: 2396
+  max_y: 2540
+  max_z: 260
+}
+ground_height: -0.5
+resolution: 4
+resolution_high: 1
+map_3d_info {
+  file_count: 255
+  max_byte_size_per_file: 937905
+  max_voxel_count_per_file: 41240
+  total_voxel_count: 9291345
+  occupied_voxel_count: 387251
+  unoccupied_voxel_count: 8904094
+}
+map_file_save_method: "block"
+block_size_per_file: 100

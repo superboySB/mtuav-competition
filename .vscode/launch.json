@@ -2,7 +2,7 @@
   "version": "0.2.0",
   "configurations": [
     {
-        "name": "(gdb) Launch",
+        "name": "test_debug",
         "type": "cppdbg",
         "request": "launch",
         "program": "${workspaceFolder}/libvroom-example/libvroom-example",

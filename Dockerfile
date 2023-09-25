@@ -7,7 +7,8 @@ RUN echo "deb http://archive.ubuntu.com/ubuntu/ focal main restricted universe m
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y net-tools vim git htop cmake wget curl zip \
-    unzip python3-pip build-essential g++ libssl-dev libasio-dev libglpk-dev pkg-config gdb
+    unzip python3-pip build-essential g++ libssl-dev libasio-dev libglpk-dev pkg-config gdb \
+    libgoogle-glog-dev
 
 # VROOM的C++算法包
 ARG VROOM_RELEASE=v1.13.0
@@ -24,7 +25,6 @@ WORKDIR /workspace
 RUN wget https://www.localsolver.com/downloads/12_0_20230915/LocalSolver_12_0_20230915_Linux64.run \
     && bash LocalSolver_12_0_20230915_Linux64.run \
     && pip install localsolver -i https://pip.localsolver.com
-
 
 # rl4co
 WORKDIR /workspace

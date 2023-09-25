@@ -1,3 +1,6 @@
+# Expired submodules
+dependencies/mtuav_3d_vision
+
 # Prerequisites
 *.d
 
@@ -12,7 +15,7 @@
 *.pch
 
 # Compiled Dynamic libraries
-*.so
+#*.so
 *.dylib
 *.dll
 
@@ -30,3 +33,18 @@
 *.exe
 *.out
 *.app
+
+# I own a mac
+.DS_Store
+.idea/
+.vscode/
+.history/
+node_modules/
+package-lock.json
+
+# build
+build/
+map/
+
+#launch
+

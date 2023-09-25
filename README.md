@@ -14,11 +14,18 @@ docker run -itd --name=mtuav --gpus all --privileged --network host -v ./mt-log:
 
 docker exec -it mtuav /bin/bash
 ```
-它默认的entrypoint会启动`/mock_server/sim.sh`，当然如果有问题也可以手动启动这个脚本。之后，在客户端启动网址`http://<server-ip>:8888`，内网（本机工作站）下可以直接访问服务器。在未公开ip的服务器上，可以先在客户端进行端口转发`ssh -L 8888:localhost:8888 -p 17003 ps@36.189.234.178`。
+它默认的entrypoint会启动`/mock_server/sim.sh`，当然如果有问题也可以手动启动这个脚本。之后，在客户端启动网址`http://<server-ip>:8888`，内网（本机工作站）下可以直接访问服务器。在未公开ip的服务器上，可以先在客户端进行端口转发`ssh -L 50052:localhost:50052 -p 17003 ps@36.189.234.178`。
+
+由于github限制，要先从官方SDK下载页面(http://dpurl.cn/tAObd2lz)里把整个`map/`文件夹拖进相应位置，然后确保启动`/mock_server/sim.sh`之后，再编译运行SDK
+```sh
+# 编译
+mkdir build && cd build && cmake .. && make && make install
+
+# 运行
+./mtuav_sdk_example
+```
 
 **（周一试试）**说实话我想试试在一个好机器里，把docker当虚拟机，在container里面做算法开发、同时前端运行（本地调用50051的api），然后另外找一个配置不好的机器（可能是笔记本电脑、只映射8888端口）来看可视化。如果有对GPU的强依赖，那最好换一个镜像，然后把目前meituan的镜像作为一个服务调用，依然还是两个contrainer在服务器通信，本机调用可视化查看，还是这条路子。
-
-
 
 # 笔记
 ## 0923
