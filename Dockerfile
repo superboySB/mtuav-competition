@@ -38,7 +38,7 @@ RUN cd /workspace && git clone https://github.com/zijinoier/mater && cd mater &&
     && make -j16 && make install
 
 # 参考5：动态避障导航算法ORCA
-# WORKDIR /workspace
-# RUN git clone https://github.com/snape/RVO2-3D && cd RVO2-3D && mkdir build && cd build && cmake ../src \
-#     && make -j16 && make install
+WORKDIR /workspace
+RUN git clone https://github.com/snape/RVO2-3D && cd RVO2-3D && mkdir build && cd build && cmake .. \
+    && make -j16 && make install
 
