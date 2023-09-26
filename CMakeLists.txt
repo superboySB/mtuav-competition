@@ -9,10 +9,10 @@ endif(CMAKE_COMPILER_IS_GNUCXX)
 include_directories(api/)
 
 #添加算法头文件路径
-include_directories(example/algorithm/include/)
+include_directories(algorithm/include/)
 #添加算法源文件路径
-file(GLOB DIR_SRCS_MAIN "${PROJECT_SOURCE_DIR}/example/*.cpp")
-file(GLOB DIR_SRCS_ALG "${PROJECT_SOURCE_DIR}/example/algorithm/src/*.cpp")
+file(GLOB DIR_SRCS_MAIN "${PROJECT_SOURCE_DIR}/algorithm/*.cpp")
+file(GLOB DIR_SRCS_ALG "${PROJECT_SOURCE_DIR}/algorithm/src/*.cpp")
 #打印源文件路径
 message(STATUS ${DIR_SRCS_MAIN})
 message(STATUS  ${DIR_SRCS_ALG})

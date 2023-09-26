@@ -137,11 +137,11 @@ int64_t myAlgorithm::solve() {
                   << ", target: " << the_cargo.target_position.x << " "
                   << the_cargo.target_position.y << " " << the_cargo.target_position.z;
         FlightPlan pickup;
-        // TODO 参赛选手需要自己实现一个轨迹生成函数或中转点生成函数
+        // TODO 参赛选手需要自己实现一个轨迹生成函数或中转点生成函数（trajectory复杂/waypoint简单）
         auto [pickup_waypoints, pickup_flight_time] = this->trajectory_generation(
-            the_drone.position, the_cargo.position, the_drone);  //此处使用轨迹生成函数
+            the_drone.position, the_cargo.position, the_drone);  //暂时都使用轨迹生成函数，不使用中转点生成函数
         // auto [pickup_waypoints, pickup_flight_time] = this->waypoints_generation(
-        //     the_drone.position, the_cargo.position);  //此处使用中转点生成函数
+        //     the_drone.position, the_cargo.position);
         pickup.target_cargo_ids.push_back(the_cargo.id);
         pickup.flight_purpose = FlightPurpose::FLIGHT_TAKE_CARGOS;  // 飞行计划目标
         // pickup.flight_plan_type = FlightPlanType::PLAN_WAY_POINTS;  // 飞行计划类型：中转点
@@ -163,7 +163,6 @@ int64_t myAlgorithm::solve() {
     }
 
     // 示例策略2：为电量小于指定数值的无人机生成换电航线
-
     for (auto the_drone : drones_need_recharge) {
         auto battery_stations = this->_task_info->battery_stations;
         // 没有换电站，无法执行换电操作
@@ -347,7 +346,7 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
     p4.seg_type = 2;
 
     // 获取无人机的性能指标
-    // 此处假设所有无人机均为同型号
+    // 此处假设所有无人机均为同型号（dzp：这是一个重要假设！！！）
     DroneLimits dl = this->_task_info->drones.front().drone_limits;
 
     // 生成p1->p2段轨迹点

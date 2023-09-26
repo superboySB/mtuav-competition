@@ -3,9 +3,7 @@
       {
         "name": "Linux",
         "includePath": [
-          "${workspaceFolder}/**",
-          "/workspace/vroom/src/**",
-          "/home/caijunqi02/work/the_system/catkin_simulation_system/devel/include/simulation_system"
+          "${workspaceFolder}/**"
         ],
         "defines": [],
         "compilerPath": "/usr/bin/gcc",

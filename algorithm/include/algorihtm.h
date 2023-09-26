@@ -65,7 +65,7 @@ class myAlgorithm : public Algorithm {
     std::string segments_to_string(std::vector<Segment> segs);
 };
 
-// * 依据自己的设计添加所需的类，下面举例说明一些常用功能类
+// TODO: 依据自己的设计添加所需的类，下面举例说明一些常用功能类
 
 // 用于估计当前时刻配送某订单的预期收益
 class CargoValueCalculator {
