@@ -31,7 +31,7 @@ docker exec -it mtuav-alg /bin/bash
 ```sh
 git clone https://github.com/superboySB/mtuav-competition && cd mtuav-competition
 ```
-由于github限制，要先从官方SDK下载页面(http://dpurl.cn/lLbhoTvz)里把`map/competition_map.bin`、`map/test_map.bin`文件拖进相应文件夹内（单机测试的时候暂不需要competition_map）。
+由于github限制，要先从[官方SDK下载页面](http://dpurl.cn/lLbhoTvz)里把`map/competition_map.bin`、`map/test_map.bin`文件拖进相应文件夹内（单机测试的时候暂不需要competition_map）。
 
 **每次下拉更新代码、需要重新运行算法时**，需要先重启美团镜像（必要时也可以重启算法container，相当于重启）
 ```sh
