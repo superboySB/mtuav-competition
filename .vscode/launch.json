@@ -2,14 +2,39 @@
   "version": "0.2.0",
   "configurations": [
     {
-        "name": "test_debug",
+      "name": "Debug mtuav-competition",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/build/mtuav_sdk_example",
+      "args": [],
+      "stopAtEntry": false,
+      "cwd": "${workspaceFolder}",
+      "preLaunchTask": "build mtuav-competition",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+          {
+              "description": "Enable pretty-printing for gdb",
+              "text": "-enable-pretty-printing",
+              "ignoreFailures": true
+          },
+          {
+              "description": "Set Disassembly Flavor to Intel",
+              "text": "-gdb-set disassembly-flavor intel",
+              "ignoreFailures": true
+          }
+      ]
+    },
+    {
+        "name": "Debug vroom",
         "type": "cppdbg",
         "request": "launch",
-        "program": "${workspaceFolder}/libvroom-example/libvroom-example",
+        "program": "${workspaceFolder}/reference/libvroom/libvroom-example",
         "args": [],
         "stopAtEntry": false,
-        "cwd": "${workspaceFolder}/libvroom-example",
-        "preLaunchTask": "make build",
+        "cwd": "${workspaceFolder}/reference/libvroom",
+        "preLaunchTask": "make build vroom",
         "environment": [],
         "externalConsole": false,
         "MIMode": "gdb",

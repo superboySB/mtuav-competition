@@ -18,6 +18,9 @@ RUN ntpdate -b -p 5 -u cn.ntp.org.cn
 #     git checkout -q $VROOM_RELEASE && \
 #     make -C /workspace/vroom/src -j$(nproc)
 
+# Setup Conda
+RUN conda activate cuopt
+
 # LocalSolver
 WORKDIR /workspace
 RUN wget https://www.localsolver.com/downloads/12_0_20230915/LocalSolver_12_0_20230915_Linux64.run \

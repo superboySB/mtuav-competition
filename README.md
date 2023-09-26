@@ -7,9 +7,18 @@
 ```sh
 sudo ntpdate -b -p 5 -u cn.ntp.org.cn
 ```
-下拉美团、算法开发相关的docker镜像：
+下拉美团提供的可视化docker镜像：
 ```sh
 docker pull marcobright2023/mtuav-competition:standalone
+```
+下拉自研算法开发相关的docker镜像，如果需要显卡支持，可以参考这个[教程](https://docs.nvidia.com/ngc/gpu-cloud/ngc-user-guide/index.html#generating-api-key)进行NGC API的注册
+```sh
+docker login nvcr.io
+Username: $oauthtoken
+Password: <my-api-key>
+```
+然后就可以拉取镜像了
+```sh
 docker build -t mtuav_image:1.0 .
 ```
 按照设计，需要starttask后才能走可视化界面，所以后台要先启动一个container用于可视化界面。最好每次编译好程序后，都反复重启这个container。基本运行流程为：启动镜像--启动sdk--打开可视化界面--算法执行--关闭sdk--关闭镜像。
@@ -83,7 +92,7 @@ node server.js
 2. 这好像有一个特别相关的[开源VRP库](https://github.com/VROOM-Project/vroom)，我估计要主力从这个库发力去改，来满足所有约束
 3. 这好像是一个不讲武德的[闭源商业软件LocalSolver](https://www.localsolver.com/docs/last/exampletour/time-dependent-capacitated-vehicle-routing-problem-with-time-windows-tdcvrptw.html#)，实在太对口了，但应该不能直接拿来用（虽然我好想先用一下看看强者的结果hh、然后也好处理关注其它的约束），但咱说能不能用来生成ground truth来做learning呢：
 4. 之前群里提到的RL4CO，也有[类似settings](https://rl4co.readthedocs.io/en/latest/_collections/tutorials/2-solving-new-problem.html)，看看C++实现RL是否可以：https://github.com/kaist-silab/rl4co
-5. 考虑到其实这个比赛要么你就用learning，要么就用不到gpu，而我自己比较感兴趣的[CUDA-enabled爆速求解器](https://developer.nvidia.com/cuopt-logistics-optimization)，fancy但不太好搞，而且问题规模还不至于太大（从单机预览版的预设文件看，应该最多15个无人机、大概200-300个货物），可以先不考虑了。
+5. 考虑到其实这个比赛要么你就用learning，要么就用不到gpu，而我自己比较感兴趣的[CUDA-enabled爆速求解器](https://developer.nvidia.com/cuopt-logistics-optimization)，fancy但不太好搞（从单机预览版的预设文件看，目前应该是15个无人机、大概200-300个货物），可以先不考虑了。
 
 配置rl4co的样例
 ```sh
@@ -92,7 +101,7 @@ cd rl4co-example && python mdpdp.py
 
 配置VROOM的样例
 ```sh
-cd /workspace/mtuav-competition/libvroom-example 
+cd /workspace/mtuav-competition/reference/libvroom 
 
 # 编译
 make clean && make -j8
@@ -104,7 +113,7 @@ make clean && make -j8
 这两天我就先用商业软件来做个入门配置吧,后续我还是得手动实现
 ```sh
 # 生成机器校验码，用来去https://www.localsolver.com/my-licenses生成trial license，然后等待可以用了就开编
-cd /workspace/mtuav-competition/localsolver-example && lskeygen
+cd /workspace/mtuav-competition/reference/localsolver && lskeygen
 
 # 编译
 g++ tdcvrptw.cpp -I/opt/localsolver_12_0/include -llocalsolver120 -lpthread -o tdcvrptw

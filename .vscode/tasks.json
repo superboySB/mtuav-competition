@@ -2,17 +2,39 @@
     "version": "2.0.0",
     "tasks": [
       {
-        "label": "make clean",
+          "label": "clean mtuav-competition",
+          "type": "shell",
+          "command": "rm -rf build",
+          "group": "build",
+          "options": {
+              "cwd": "${workspaceFolder}"
+          }
+      },
+      {
+          "label": "build mtuav-competition",
+          "type": "shell",
+          "command": "mkdir -p build && cd build && cmake .. && make",
+          "group": {
+              "kind": "build",
+              "isDefault": true
+          },
+          "dependsOn": ["clean mtuav-competition"],
+          "options": {
+              "cwd": "${workspaceFolder}"
+          }
+      },
+      {
+        "label": "make clean vroom",
         "type": "shell",
         "command": "make",
         "args": ["clean"],
         "group": "build",
         "options": {
-          "cwd": "${workspaceFolder}/libvroom-example"
+          "cwd": "${workspaceFolder}/reference/libvroom"
         }
       },
       {
-        "label": "make build",
+        "label": "make build vroom",
         "type": "shell",
         "command": "make",
         "args": [],
@@ -22,7 +44,7 @@
         },
         "dependsOn": ["make clean"],
         "options": {
-          "cwd": "${workspaceFolder}/libvroom-example"
+          "cwd": "${workspaceFolder}/reference/libvroom"
         }
       }
     ]
