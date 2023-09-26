@@ -1,28 +1,13 @@
-FROM nvcr.io/nvidia/pytorch:20.12-py3
+FROM nvcr.io/nvidia/pytorch:22.04-py3
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8
-RUN apt-get update 
+RUN apt-get update && apt-get install -y locales && locale-gen en_US.UTF-8
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata net-tools vim git htop wget curl zip unzip strace valgrind \
-    build-essential g++ libssl-dev libasio-dev libglpk-dev pkg-config gdb libgoogle-glog-dev libboost-program-options-dev \
-    libyaml-cpp-dev clang-tidy clang-format libyaml-cpp-dev build-essential ntpdate ca-certificates clang cmake-format \
-    cppcheck cpplint dirmngr doxygen dpkg dpkg-dev file gnupg graphviz iwyu lldb netbase ninja-build npm pkgconf reuse \
-    yamllint zlib1g-dev \
-    && wget -qO - https://bazel.build/bazel-release.pub.gpg | gpg --dearmor - \
-    > /usr/share/keyrings/bazel-archive-keyring.gpg \
-    && echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/bazel-archive-keyring.gpg] https://storage.googleapis.com/bazel-apt stable jdk1.8' \
-        > /etc/apt/sources.list.d/bazel.list \
-    && wget -qO - https://apt.kitware.com/keys/kitware-archive-latest.asc \
-        | gpg --dearmor - > /usr/share/keyrings/kitware-archive-keyring.gpg \
-    && echo 'deb [arch=amd64 signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu jammy main' \
-        > /etc/apt/sources.list.d/kitware.list \
-    && apt-get update -qq \
-    && apt-get install --no-install-recommends -o Dpkg::Use-Pty=0 -qy bazel cmake \
-    && rm -rf /var/lib/apt/lists/* \
-    && npm install -g \
-        @bazel/buildifier \
-        jsonlint \
-        markdownlint-cli
+    build-essential g++ libssl-dev libasio-dev libglpk-dev gdb libgoogle-glog-dev libboost-program-options-dev cmake \
+    libyaml-cpp-dev clang-tidy clang-format libyaml-cpp-dev build-essential ntpdate ca-certificates clang dirmngr doxygen \
+    dpkg dpkg-dev file gnupg graphviz iwyu lldb netbase ninja-build npm pkgconf yamllint zlib1g-dev
+RUN rm -rf /var/lib/apt/lists/*
 RUN ntpdate -b -p 5 -u cn.ntp.org.cn
 
 # 参考1：VROOM的C++算法包 (算是传统方法的优秀实现，速度在100ms级，但可能不太容易应对动态的需求、和复杂的约束，并且编译要求有冲突)
