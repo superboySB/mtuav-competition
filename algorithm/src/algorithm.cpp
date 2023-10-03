@@ -151,7 +151,10 @@ int64_t myAlgorithm::solve() {
         pickup.segments = pickup_waypoints;
         // 在下发飞行计划前，选手可以使用该函数自行先校验飞行计划的可行性
         // 注意ValidateFlightPlan 只能校验起点/终点均在地面上的飞行计划
-        // auto reponse_pickup = this->_planner->ValidateFlightPlan(drone_limits, your_flight_plan)
+        //（实际比赛时可以注释掉这里）
+        auto reponse_pickup = this->_planner->ValidateFlightPlan(drone_limits, your_flight_plan);
+        LOG(INFO) << "Result of ValidateFlightPlan: " << reponse_pickup;
+        
         flight_plans_to_publish.push_back({the_drone.drone_id, pickup});
         LOG(INFO) << "Successfully generated flight plan, flight id: " << pickup.flight_id
                   << ", drone id: " << the_drone.drone_id

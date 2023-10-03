@@ -37,25 +37,25 @@ typedef struct DroneLimits {
   // 最大速度
   double max_fly_speed_v;
   double max_fly_speed_h;
-  // 最大飞行加速度
+  // 最大飞行加速度（两个分量可以同时达到最大值的哦）
   double max_fly_acc_v;
   double max_fly_acc_h;
   // 最大载重
   double max_weight;
   // 最大货物数
   double max_cargo_slots;
-  double min_fly_height;
-  double max_fly_height;
+  double min_fly_height;  // 70m
+  double max_fly_height;  // 120m
   // 最大飞行时间
   double max_flight_seconds;
 } DroneLimits;
 
 enum CargoStatus {
-  CARGO_UNKNOWN = 0,
-  CARGO_WAITING = 1,
+  CARGO_UNKNOWN = 0,  // 默认值
+  CARGO_WAITING = 1,  // 不取外卖会一直存在，奖励持续变低，惩罚持续增加
   CARGO_DELIVERING = 2,
   CARGO_DELIVERED = 3,
-  CARGO_FAILED = 4,
+  CARGO_FAILED = 4,  // 飞机炸机后，带的货物
 };
 
 typedef struct CargoInfo {
@@ -102,12 +102,15 @@ enum FlightPlanType {
   PLAN_TRAJECTORIES = 1,
 };
 
-typedef struct FlightPlan {
+ // 理论上静态航线+时间戳=要执行的航线，可以根据目标时间戳生成flight_id
+ // 目前这个id只用来防止重复执行。任务执行完成，要根据飞机的状态来判断。
+ // 要改变原来的飞行计划，必须用新的id。
+typedef struct FlightPlan { 
   // 飞行计划类型：航点/轨迹
   FlightPlanType flight_plan_type;
   // 此飞行计划的目的：换电/取货/送货
   FlightPurpose flight_purpose;
-  // 标识航线，一个id只能执行一次，用于现在同一条航线的多次规划
+  // 标识航线，一个id只能执行一次，用于现在同一条航线的多次规划（新的规划要对应新的id）
   std::string flight_id;
   // 航线起飞的时间（UTC+8时间），单位是毫秒
   uint64_t takeoff_timestamp;
@@ -159,7 +162,7 @@ enum Status {
   READY_TO_FLY = 6,
 };
 
-enum ObstacleType {
+enum ObstacleType { // 应该特指的都是移动的飞机
   OBSTACLE_UNKNOWN = 0,
   OBSTACLE_DRONE = 1,
   OBSTACLE_BIRD = 2,
@@ -183,16 +186,14 @@ enum DroneCrashType {
 
 typedef struct DroneStatus {
   std::string drone_id;
-  uint64_t timestamp;
+  uint64_t timestamp;  // 当前时间戳
   Status status;
-  Vec3 position;
+  Vec3 position;   // 当前位置坐标
   double height;                              // distance to ground
-  std::vector<int> delivering_cargo_ids;
-  // 剩余电量
-  float battery;
-  std::vector<ObstacleInfo> detected_obstacles;
-  // 如果status == CRASH，这里记录原因
-  DroneCrashType crash_type;
+  std::vector<int> delivering_cargo_ids;   // 所挂餐箱编号的集合
+  float battery; // 剩余电量
+  std::vector<ObstacleInfo> detected_obstacles; // 当前已知障碍物，这里指的是动态障碍物，初赛不会出现动态障碍物
+  DroneCrashType crash_type; // 如果status == CRASH，这里记录原因
 } DroneStatus;
 
 typedef struct Response {

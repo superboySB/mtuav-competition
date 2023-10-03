@@ -60,6 +60,9 @@ mkdir build && cd build && cmake .. && make && make install
 
 【注意】在未公开ip的服务器上，可以先在客户端进行端口转发`ssh -L 8888:localhost:8888 -p 17003 ps@36.189.234.178`。
 
+
+
+
 ### [在线测试]：连接在线比赛系统
 在算法镜像内，**每次下拉更新代码、需要重新运行算法时**，确保源代码中`planner.h`和`sdk_test_main.cpp`中相应的`Planner`和`Login`方法以及`map地址`配置正确，然后直接编译源码运行SDK
 ```sh

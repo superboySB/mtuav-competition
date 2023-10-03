@@ -6,9 +6,9 @@ RUN apt-get update && apt-get install -y locales && locale-gen en_US.UTF-8
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata net-tools vim git htop wget curl zip unzip strace valgrind \
     build-essential g++ libssl-dev libasio-dev libglpk-dev gdb libgoogle-glog-dev libboost-program-options-dev cmake \
     libyaml-cpp-dev clang-tidy clang-format libyaml-cpp-dev build-essential ntpdate ca-certificates clang dirmngr doxygen \
-    dpkg dpkg-dev file gnupg graphviz iwyu lldb netbase ninja-build npm pkgconf yamllint zlib1g-dev
+    dpkg dpkg-dev file gnupg graphviz iwyu lldb netbase ninja-build npm pkgconf yamllint zlib1g-dev systemd
 RUN rm -rf /var/lib/apt/lists/*
-RUN ntpdate -b -p 5 -u cn.ntp.org.cn
+RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtim
 
 # 参考1：VROOM的C++算法包 (算是传统方法的优秀实现，速度在100ms级，但可能不太容易应对动态的需求、和复杂的约束，并且编译要求有冲突)
 ARG VROOM_RELEASE=v1.13.0

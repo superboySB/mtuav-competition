@@ -29,6 +29,15 @@ file(GLOB DIR_SKD_LIBS "${PROJECT_SOURCE_DIR}/libs/*.so")
 message(STATUS ${DIR_SKD_LIBS})
 execute_process(COMMAND export LD_LIBRARY_PATH="${PROJECT_SOURCE_DIR}/libs/":$LD_LIBRARY_PATH)
 
+# -----------------------------
+# 测试专用
+# 添加test_map.cpp的路径
+set(TEST_MAP_SRC tests/test_map.cpp)
+add_executable(test_map ${TEST_MAP_SRC})
+target_link_libraries(test_map ${DIR_SKD_LIBS} -lpthread -lglog)
+
+# -----------------------------
+# 主文件专用
 add_executable(mtuav_sdk_example ${DIR_SRCS_MAIN} ${DIR_SRCS_ALG})
 target_link_libraries(mtuav_sdk_example  ${DIR_SKD_LIBS} -lpthread -lglog)
 # 库文件安装到指定的位置
