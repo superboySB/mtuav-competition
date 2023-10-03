@@ -1,0 +1,41 @@
+[2023-10-03/02:54:46.397:INFO:client.go(86)] connected to grpc server: sim.race.meituan.com:8090
+[2023-10-03/02:54:46.397:INFO:libmt_sdk.go(617)] MtSdkSetMapQuery
+[2023-10-03/02:54:46.397:INFO:libmt_sdk.go(597)] MtSdkLogin
+[2023-10-03/02:54:46.397:INFO:client.go(194)] MtSdkLogin, user: b87560ef-1f81-4545-948e-2b445544eb83
+[2023-10-03/02:54:51.788:INFO:client.go(167)] server connected, server: sim.race.meituan.com:8090, user: b87560ef-1f81-4545-948e-2b445544eb83
+[2023-10-03/02:54:51.788:INFO:client.go(225)] logging done, fetch tasks...
+[2023-10-03/02:54:51.788:INFO:client_channel.go(134)] starting channel reading loop...
+[2023-10-03/02:54:51.788:INFO:client_channel.go(88)] starting channel main loop...
+[2023-10-03/02:54:51.788:INFO:client_channel.go(158)] starting channel writing loop...
+[2023-10-03/02:54:52.096:INFO:client.go(236)] Fetch tasks, user: b87560ef-1f81-4545-948e-2b445544eb83, tasks: 2
+[2023-10-03/02:54:52.096:INFO:libmt_sdk.go(644)] MtSdkQueryTaskCount
+[2023-10-03/02:54:52.096:INFO:libmt_sdk.go(659)] MtSdkQueryTask: 0
+[2023-10-03/02:54:52.096:INFO:libmt_sdk.go(683)] MtSdkStartTask: 0
+[2023-10-03/02:54:52.096:INFO:client.go(307)] request starting task, task: 0
+[2023-10-03/02:54:52.251:INFO:client_channel.go(154)] quiting reading loop...
+[2023-10-03/02:54:52.251:ERROR:client.go(316)] start task fail, task: 0, err: The number of running tasks exceeds the maximum server capacity, Please try again later!
+[2023-10-03/02:54:52.252:ERROR:libmt_sdk.go(385)] OnSdkError: read server msg fail, err: rpc error: code = Unknown desc = 
+[2023-10-03/02:54:52.252:INFO:client_channel.go(95)] quiting main loop due to error: read server msg fail, err: rpc error: code = Unknown desc = 
+[2023-10-03/02:54:52.252:INFO:client_channel.go(164)] quiting writing loop...
+[2023-10-03/02:54:52.252:INFO:client.go(561)] quiting heart beat loop....
+[2023-10-03/03:22:33.809:INFO:client.go(86)] connected to grpc server: sim.race.meituan.com:8090
+[2023-10-03/03:22:33.809:INFO:libmt_sdk.go(617)] MtSdkSetMapQuery
+[2023-10-03/03:22:33.809:INFO:libmt_sdk.go(597)] MtSdkLogin
+[2023-10-03/03:22:33.809:INFO:client.go(194)] MtSdkLogin, user: b87560ef-1f81-4545-948e-2b445544eb83
+[2023-10-03/03:22:34.190:INFO:client.go(167)] server connected, server: sim.race.meituan.com:8090, user: b87560ef-1f81-4545-948e-2b445544eb83
+[2023-10-03/03:22:34.190:INFO:client.go(225)] logging done, fetch tasks...
+[2023-10-03/03:22:34.190:INFO:client_channel.go(88)] starting channel main loop...
+[2023-10-03/03:22:34.190:INFO:client_channel.go(134)] starting channel reading loop...
+[2023-10-03/03:22:34.190:INFO:client_channel.go(158)] starting channel writing loop...
+[2023-10-03/03:22:34.337:INFO:client.go(236)] Fetch tasks, user: b87560ef-1f81-4545-948e-2b445544eb83, tasks: 2
+[2023-10-03/03:22:34.337:INFO:libmt_sdk.go(644)] MtSdkQueryTaskCount
+[2023-10-03/03:22:34.338:INFO:libmt_sdk.go(659)] MtSdkQueryTask: 0
+[2023-10-03/03:22:34.338:INFO:libmt_sdk.go(683)] MtSdkStartTask: 0
+[2023-10-03/03:22:34.338:INFO:client.go(307)] request starting task, task: 0
+[2023-10-03/03:22:34.424:INFO:client.go(318)] start task done, task: 0
+[2023-10-03/03:22:54.741:INFO:libmt_sdk.go(888)] MtSdkPlanDroneTrajectory: drone-013
+[2023-10-03/03:22:54.744:INFO:client.go(463)] planning drone trajectory, drone:drone-013, flight: 1, type: FT_TAKE_CARGO, segments: 2119
+[2023-10-03/03:22:55.303:INFO:client.go(475)] plan drone done trajectory, drone: drone-013
+[2023-10-03/03:23:15.662:INFO:libmt_sdk.go(888)] MtSdkPlanDroneTrajectory: drone-002
+[2023-10-03/03:23:15.663:INFO:client.go(463)] planning drone trajectory, drone:drone-002, flight: 2, type: FT_TAKE_CARGO, segments: 2155
+[2023-10-03/03:23:16.294:INFO:client.go(475)] plan drone done trajectory, drone: drone-002

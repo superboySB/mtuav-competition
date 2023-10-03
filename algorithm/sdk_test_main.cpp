@@ -35,9 +35,15 @@ int main(int argc, const char* argv[]) {
     // 配置本地log路径
     google::SetLogDestination(google::GLOG_INFO,
                               "/workspace/mtuav-competition/log/uav_champ_example_");
+
     // 配置本地路径读取地图信息
+    // 用于单机版镜像
+    // auto map = mtuav::Map::CreateMapFromFile(
+    //     "/workspace/mtuav-competition/map/test_map.bin");
+    // 用于在线比赛系统
     auto map = mtuav::Map::CreateMapFromFile(
-        "/workspace/mtuav-competition/map/test_map.bin");
+        "/workspace/mtuav-competition/map/competition_map.bin");
+    
     // 声明一个planner指针
     std::shared_ptr<Planner> planner = std::make_shared<Planner>(map);
     // LOG 打印是否成功读取地图
@@ -48,9 +54,12 @@ int main(int argc, const char* argv[]) {
         LOG(INFO) << "Read map successfully.";
     }
 
-    // 下面使用测试账号仅用于登录单机版镜像（在线系统时，使用比赛下发的的用户名和密码）
+    // 下面使用测试账号仅用于登录单机版镜像
+    // mtuav::Response r =
+    //     planner->Login("801f0ff5-5359-4c3e-99d4-f05d7eb47423", "e57aab02cf1f7433d7bf385748376164");
+    // 下面使用测试账号仅用于登录在线比赛系统
     mtuav::Response r =
-        planner->Login("801f0ff5-5359-4c3e-99d4-f05d7eb47423", "e57aab02cf1f7433d7bf385748376164");
+        planner->Login("b87560ef-1f81-4545-948e-2b445544eb83", "aa855fbc9c433422d69584581d4a69c4");
     if (r.success == false) {
         LOG(INFO) << "Login failed, msg: " << r.msg;
         return -1;

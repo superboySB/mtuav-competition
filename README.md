@@ -40,8 +40,9 @@ docker exec -it mtuav-alg /bin/bash
 ```sh
 git clone https://github.com/superboySB/mtuav-competition && cd mtuav-competition
 ```
-由于github限制，要先从[官方SDK下载页面](http://dpurl.cn/lLbhoTvz)里把`map/competition_map.bin`、`map/test_map.bin`文件拖进相应文件夹内（单机测试的时候暂不需要competition_map）。
+由于github限制，要先从[官方SDK下载页面](http://dpurl.cn/lLbhoTvz)里把`map/competition_map.bin`、`map/test_map.bin`文件拖进相应文件夹内（只有在线测试需要competition_map.bin）。
 
+### [本地调试] 连接本地镜像mock server
 **每次下拉更新代码、需要重新运行算法时**，需要先重启美团镜像（必要时也可以重启算法container，相当于重启）
 ```sh
 docker stop mtuav-vis mtuav-alg
@@ -57,17 +58,18 @@ mkdir build && cd build && cmake .. && make && make install
 ```
 之后，在客户机的浏览器启动网址`http://<server-ip>:8888`，内网（本机工作站）下可以直接该访问服务器。此时m要选择文件在sdk的`visualization/test`内部，一定要同时选择两个`.txt`文件。**注意，SDK在StartTask 后不要退出，退出后服务会关闭任务，同时也会关闭可视化程序。**
 
-[TODO: 目前有问题、必须手动用备选方案启动manager里的start.sh] 在未公开ip的服务器上，可以先在客户端进行端口转发`ssh -L 8888:localhost:8888 -p 17003 ps@36.189.234.178`。
+【注意】在未公开ip的服务器上，可以先在客户端进行端口转发`ssh -L 8888:localhost:8888 -p 17003 ps@36.189.234.178`。
 
-
-## [Optional] 备选方案
-如果浏览器实在看不了可视化，也可以手动启动可视化界面:
+### [在线测试]：连接在线比赛系统
+在算法镜像内，**每次下拉更新代码、需要重新运行算法时**，确保源代码中`planner.h`和`sdk_test_main.cpp`中相应的`Planner`和`Login`方法以及`map地址`配置正确，然后直接编译源码运行SDK
 ```sh
-docker exec -it mtuav-vis /bin/bash
-cd manager/utmm/server
-node server.js
+# 编译
+mkdir build && cd build && cmake .. && make && make install
+
+# 运行
+./mtuav_sdk_example
 ```
-注意这个是临时方案，只用于演示，连接SDK前要先关闭。
+不同于单机镜像，在线⽐赛系统地图尺寸更大、任务时间更久，且**没有可视化窗⼝**，⻜机状态只能通过代码来判断，规划时，要给⻜机电量留余量，极限规划可能引发坠机（电量<1%时随机坠机）。建议：先使⽤单机镜像调试代码（地图和场景相对简单），然后连接在线系统进⾏测试。强⼤的算⼒对算法会有些帮助，但不是决定性的。充分利⽤已知信息，提前最好预计算；充分利⽤多核计算能⼒；任何时候都优先考虑⻜⾏安全。
 
 # 笔记
 ## 0923
