@@ -5,29 +5,30 @@ ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8
 RUN apt-get update && apt-get install -y locales && locale-gen en_US.UTF-8
 RUN cd /home/user && wget https://github.com/Kitware/CMake/releases/download/v3.27.7/cmake-3.27.7-linux-x86_64.tar.gz && \
-    tar -zxvf cmake-3.27.7-linux-x86_64.tar.gz && mv cmake-3.27.7-linux-x86_64 /opt/cmake-3.27 && \
-    echo 'export PATH=/opt/cmake-3.27/bin:$PATH' >> ~/.bashrc && source ~/.bashrc
+    tar -zxvf cmake-3.27.7-linux-x86_64.tar.gz && mv cmake-3.27.7-linux-x86_64 /opt/cmake-3.27
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata net-tools vim git htop wget curl zip unzip build-essential dpkg\
     libssl-dev libglpk-dev gdb libgoogle-glog-dev libboost-program-options-dev cmake ca-certificates clang ntpdate gnupg g++-10\
     libyaml-cpp-dev clang-tidy clang-format lsb-release netbase libnlopt-cxx-dev gfortran
 RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtim
 
 # Install OR-tools
-RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 10 && \
-    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 10 && \
-    update-alternatives --install /usr/bin/cc cc /usr/bin/gcc 30 && \
-    update-alternatives --set cc /usr/bin/gcc && \
-    update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++ 30 && \
-    update-alternatives --set c++ /usr/bin/g++
-RUN cd /home/user && git clone https://github.com/google/or-tools && cd or-tools && cmake -S . -B build -DBUILD_DEPS=ON && \
-    cmake --build build --config Release --target all -j -v && cmake --build build --config Release --target test -v
-RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9 && \
-    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9 && \
-    update-alternatives --set gcc /usr/bin/gcc-9 && \
-    update-alternatives --set g++ /usr/bin/g++-9
+RUN cd /home/user && git clone https://github.com/google/or-tools
+# RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 10 && \
+#     update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 10 && \
+#     update-alternatives --install /usr/bin/cc cc /usr/bin/gcc 30 && \
+#     update-alternatives --set cc /usr/bin/gcc && \
+#     update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++ 30 && \
+#     update-alternatives --set c++ /usr/bin/g++
+RUN cd /home/user/or-tools && /opt/cmake-3.27/bin/cmake -S . -B build -DBUILD_DEPS=ON && \
+    /opt/cmake-3.27/bin/cmake --build build --config Release --target all -j -v && \
+    /opt/cmake-3.27/bin/cmake --build build --config Release --target test -v
+# RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9 && \
+#     update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9 && \
+#     update-alternatives --set gcc /usr/bin/gcc-9 && \
+#     update-alternatives --set g++ /usr/bin/g++-9
 
 # -------------------------------------------------------------
-# 以下是一些用处不会很大的前期参考
+# 以下很多是一些用处不大的前期参考
 #
 # 参考1：VROOM的C++算法包 (算是传统方法的优秀实现，速度在100ms级，但可能不太容易应对动态的需求、和复杂的约束，并且编译要求有冲突)
 # （没啥用）
@@ -70,7 +71,7 @@ RUN mkdir /home/user/swarm_ws && mkdir /home/user/swarm_ws/src && cd /home/user/
 # RUN cd .. && catkin_make && source devel/setup.bash && rosrun amswarm swarm_am_nav
 # -------------------------------------------------------------
 
-RUN echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc 
+RUN echo 'export PATH=/opt/cmake-3.27/bin:$PATH' >> ~/.bashrc && echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc 
 WORKDIR /home/user
 
 # [待最终稳定后再加] 在构建镜像时清理 apt 缓存，减小最终镜像的体积
