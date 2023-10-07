@@ -29,7 +29,7 @@ docker run -id --name=mtuav-vis -p 8888:8888 -p 50051:50051 -v ./mt-log:/mt-log 
 ```
 通常加载任务运行后，可以看到`./mt-log`中会有相应的日志打印，然后启动算法开发镜像，也放置在后台
 ```sh
-docker run -itd --name=mtuav-alg --gpus all --privileged --network host mtuav_image:1.0
+docker run -itd --privileged -v /tmp/.X11-unix:/tmp/.X11-unix:ro -e DISPLAY=$DISPLAY --gpus all --network=host --name=mtuav-alg mtuav_image:1.0 /bin/bash
 ```
 
 ## [Main] 进入算法开发镜像里，不断迭代开发算法、启动SDK、打开可视化界面这一流程

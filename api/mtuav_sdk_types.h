@@ -189,7 +189,7 @@ typedef struct DroneStatus {
   uint64_t timestamp;  // 当前时间戳
   Status status;
   Vec3 position;   // 当前位置坐标
-  double height;                              // distance to ground
+  double height;                            // distance to ground
   std::vector<int> delivering_cargo_ids;   // 所挂餐箱编号的集合
   float battery; // 剩余电量
   std::vector<ObstacleInfo> detected_obstacles; // 当前已知障碍物，这里指的是动态障碍物，初赛不会出现动态障碍物
