@@ -1,4 +1,4 @@
-FROM nvcr.io/nvidia/pytorch:22.04-py3
+FROM nvcr.io/nvidia/pytorch:22.12-py3
 
 # System Requirements
 ENV DEBIAN_FRONTEND=noninteractive
@@ -19,9 +19,9 @@ RUN cd /workspace && git clone https://github.com/google/or-tools
 #     update-alternatives --set cc /usr/bin/gcc && \
 #     update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++ 30 && \
 #     update-alternatives --set c++ /usr/bin/g++
-RUN cd /workspace/or-tools && /opt/cmake-3.27/bin/cmake -S . -B build -DBUILD_DEPS=ON && \
-    /opt/cmake-3.27/bin/cmake --build build --config Release --target all -j -v && \
-    /opt/cmake-3.27/bin/cmake --build build --config Release --target test -v
+RUN cd /workspace/or-tools && cmake -S . -B build -DBUILD_DEPS=ON && \
+    cmake --build build --config Release --target all -j -v && \
+    cmake --build build --config Release --target test -v
 # RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9 && \
 #     update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9 && \
 #     update-alternatives --set gcc /usr/bin/gcc-9 && \
@@ -64,7 +64,8 @@ RUN cd /workspace && git clone https://github.com/zijinoier/mater && cd mater &&
 # RUN git clone https://github.com/snape/RVO2-3D && cd RVO2-3D && mkdir build && cd build && cmake .. && make -j16 && make install
 
 # 参考6：Pybullet-drones开源的swarm规划控制
-RUN cd /workspace && git clone --recursive https://github.com/jrl-umi3218/eigen-quadprog && cd eigen-quadprog && mkdir build && \
+RUN apt-get install -y doxygen graphviz libeigen3-dev libboost-test-dev
+RUN cd /workspace && git clone --recursive https://github.com/superboySB/eigen-quadprog && cd eigen-quadprog && mkdir build && \
     cd build && cmake .. && make && make install && ln -s /usr/include/eigen3/Eigen /usr/include/Eigen
 # RUN mkdir /workspace/swarm_ws && mkdir /workspace/swarm_ws/src && cd /workspace/swarm_ws/src && \
 #     git clone https://github.com/utiasDSL/AMSwarm
