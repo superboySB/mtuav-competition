@@ -5,7 +5,7 @@
 #include <chrono>
 #include <glog/logging.h>
 
-#include "yaml-cpp/yaml.h"
+#include <nlohmann/json.hpp>
 
 #include "optim_am_swarm.hpp"
 #include <eigen-quadprog/QuadProg.h>
@@ -2189,7 +2189,7 @@ namespace Optim
 
 	void initializeOptimizer(probData &prob_data, int VERBOSE){
 		// @ Load parameters from config file
-		YAML :: Node params = prob_data.params;
+		nlohmann::json params = prob_data.params;
 
 		std :: vector<std :: vector<float>> _pos_static_obs = prob_data.pos_static_obs;
 		std :: vector<std :: vector<float>> _dim_static_obs = prob_data.dim_static_obs;
@@ -2215,83 +2215,83 @@ namespace Optim
 		}
 
 		
-		prob_data.free_space = params["free_space"].as<bool>();
+		prob_data.free_space = params["free_space"].get<bool>();
 		
 		if(prob_data.free_space){
 			prob_data.num_static_obs = 0;
 		}
 		
-		std :: vector<float> _x_lim = params["x_lim"].as<std::vector<float>>();
-		std :: vector<float> _y_lim = params["y_lim"].as<std::vector<float>>();
-		std :: vector<float> _z_lim = params["z_lim"].as<std::vector<float>>();
+		std :: vector<float> _x_lim = params["x_lim"].get<std::vector<float>>();
+		std :: vector<float> _y_lim = params["y_lim"].get<std::vector<float>>();
+		std :: vector<float> _z_lim = params["z_lim"].get<std::vector<float>>();
 
 		
 		
-		prob_data.world = params["world"].as<int>();
-		prob_data.num = params["num"].as<int>();
+		prob_data.world = params["world"].get<int>();
+		prob_data.num = params["num"].get<int>();
 		
-		prob_data.t_plan = params["t_plan"].as<int>();
-		prob_data.num_up = params["num_up"].as<int>();
-		prob_data.dist_stop = params["dist_stop"].as<float>();
-		prob_data.kappa = params["kappa"].as<int>();
+		prob_data.t_plan = params["t_plan"].get<int>();
+		prob_data.num_up = params["num_up"].get<int>();
+		prob_data.dist_stop = params["dist_stop"].get<float>();
+		prob_data.kappa = params["kappa"].get<int>();
 
-		prob_data.max_iter = params["max_iter"].as<int>();
-		prob_data.max_sim_time = params["max_time"].as<int>();
-		prob_data.weight_goal = params["weight_goal"].as<float>();
-		prob_data.weight_smoothness = params["weight_smoothness"].as<float>();
-		prob_data.weight_goal_og = params["weight_goal"].as<float>();
-		prob_data.weight_smoothness_og = params["weight_smoothness"].as<float>();
+		prob_data.max_iter = params["max_iter"].get<int>();
+		prob_data.max_sim_time = params["max_time"].get<int>();
+		prob_data.weight_goal = params["weight_goal"].get<float>();
+		prob_data.weight_smoothness = params["weight_smoothness"].get<float>();
+		prob_data.weight_goal_og = params["weight_goal"].get<float>();
+		prob_data.weight_smoothness_og = params["weight_smoothness"].get<float>();
 		
-		prob_data.delta_aggressive = params["delta_aggressive"].as<float>();
-		prob_data.delta_static_obs = params["delta_static_obs"].as<float>();
-		prob_data.delta_drone = params["delta_drone"].as<float>();
-		prob_data.delta_vel = params["delta_vel"].as<float>();
-		prob_data.delta_acc = params["delta_acc"].as<float>();
-		prob_data.delta_jerk = params["delta_jerk"].as<float>();
-		prob_data.delta_snap = params["delta_snap"].as<float>();
-		prob_data.delta_ineq = params["delta_ineq"].as<float>();
+		prob_data.delta_aggressive = params["delta_aggressive"].get<float>();
+		prob_data.delta_static_obs = params["delta_static_obs"].get<float>();
+		prob_data.delta_drone = params["delta_drone"].get<float>();
+		prob_data.delta_vel = params["delta_vel"].get<float>();
+		prob_data.delta_acc = params["delta_acc"].get<float>();
+		prob_data.delta_jerk = params["delta_jerk"].get<float>();
+		prob_data.delta_snap = params["delta_snap"].get<float>();
+		prob_data.delta_ineq = params["delta_ineq"].get<float>();
 
-		prob_data.rho_static_obs_max = params["rho_static_obs_max"].as<float>();
-		prob_data.rho_drone_max = params["rho_drone_max"].as<float>();
-		prob_data.rho_vel_max = params["rho_vel_max"].as<float>();
-		prob_data.rho_acc_max = params["rho_acc_max"].as<float>();
-		prob_data.rho_jerk_max = params["rho_jerk_max"].as<float>();
-		prob_data.rho_snap_max = params["rho_snap_max"].as<float>();
-		prob_data.rho_ineq_max = params["rho_ineq_max"].as<float>();
+		prob_data.rho_static_obs_max = params["rho_static_obs_max"].get<float>();
+		prob_data.rho_drone_max = params["rho_drone_max"].get<float>();
+		prob_data.rho_vel_max = params["rho_vel_max"].get<float>();
+		prob_data.rho_acc_max = params["rho_acc_max"].get<float>();
+		prob_data.rho_jerk_max = params["rho_jerk_max"].get<float>();
+		prob_data.rho_snap_max = params["rho_snap_max"].get<float>();
+		prob_data.rho_ineq_max = params["rho_ineq_max"].get<float>();
 
-		prob_data.axis_wise = params["axis_wise"].as<bool>();
-		prob_data.jerk_snap_constraints = params["jerk_snap_constraints"].as<bool>();
+		prob_data.axis_wise = params["axis_wise"].get<bool>();
+		prob_data.jerk_snap_constraints = params["jerk_snap_constraints"].get<bool>();
 		if(!prob_data.axis_wise){
-			prob_data.vel_max = params["vel_max"].as<float>();
-			prob_data.acc_max = params["acc_max"].as<float>();
-			prob_data.jerk_max = params["jerk_max"].as<float>();
-			prob_data.snap_max = params["snap_max"].as<float>();
+			prob_data.vel_max = params["vel_max"].get<float>();
+			prob_data.acc_max = params["acc_max"].get<float>();
+			prob_data.jerk_max = params["jerk_max"].get<float>();
+			prob_data.snap_max = params["snap_max"].get<float>();
 		}
 		else{
-			prob_data.vel_max = params["vel_max"].as<float>()/sqrt(3);
-			prob_data.acc_max = params["acc_max"].as<float>()/sqrt(3);
-			prob_data.jerk_max = params["jerk_max"].as<float>()/sqrt(3);
-			prob_data.snap_max = params["snap_max"].as<float>()/sqrt(3);
+			prob_data.vel_max = params["vel_max"].get<float>()/sqrt(3);
+			prob_data.acc_max = params["acc_max"].get<float>()/sqrt(3);
+			prob_data.jerk_max = params["jerk_max"].get<float>()/sqrt(3);
+			prob_data.snap_max = params["snap_max"].get<float>()/sqrt(3);
 		}
-		prob_data.x_min = _x_lim[0] + params["a_drone"].as<float>();
-		prob_data.y_min = _y_lim[0] + params["b_drone"].as<float>();
-		prob_data.z_min = _z_lim[0] + params["a_drone"].as<float>();
+		prob_data.x_min = _x_lim[0] + params["a_drone"].get<float>();
+		prob_data.y_min = _y_lim[0] + params["b_drone"].get<float>();
+		prob_data.z_min = _z_lim[0] + params["a_drone"].get<float>();
 		
-		prob_data.x_max = _x_lim[1] - params["a_drone"].as<float>();
-		prob_data.y_max = _y_lim[1] - params["b_drone"].as<float>();
-		prob_data.z_max = _z_lim[1] - params["a_drone"].as<float>();
+		prob_data.x_max = _x_lim[1] - params["a_drone"].get<float>();
+		prob_data.y_max = _y_lim[1] - params["b_drone"].get<float>();
+		prob_data.z_max = _z_lim[1] - params["a_drone"].get<float>();
 
-		prob_data.thresold = params["thresold"].as<float>();
+		prob_data.thresold = params["thresold"].get<float>();
 	
-		prob_data.prox_agent = params["prox_agent"].as<float>();
-		prob_data.prox_obs = params["prox_obs"].as<float>();
-		prob_data.buffer = params["buffer"].as<float>();
+		prob_data.prox_agent = params["prox_agent"].get<float>();
+		prob_data.prox_obs = params["prox_obs"].get<float>();
+		prob_data.buffer = params["buffer"].get<float>();
 		
-		prob_data.gamma = params["gamma"].as<float>();
-		prob_data.gravity = params["gravity"].as<float>();	
-		prob_data.use_thrust_values = params["use_thrust_values"].as<bool>();
-		prob_data.f_min = params["f_min"].as<float>() * prob_data.gravity;
-		prob_data.f_max = params["f_max"].as<float>() * prob_data.gravity;
+		prob_data.gamma = params["gamma"].get<float>();
+		prob_data.gravity = params["gravity"].get<float>();	
+		prob_data.use_thrust_values = params["use_thrust_values"].get<bool>();
+		prob_data.f_min = params["f_min"].get<float>() * prob_data.gravity;
+		prob_data.f_max = params["f_max"].get<float>() * prob_data.gravity;
 
 		prob_data.dt = prob_data.t_plan / prob_data.num;
 		prob_data.nvar = 11;
@@ -2366,9 +2366,9 @@ namespace Optim
 			prob_data.y_static_obs = (Eigen :: ArrayXXf :: Ones(prob_data.num_static_obs, prob_data.num)).colwise() * y_static_obs;
 			prob_data.z_static_obs = (Eigen :: ArrayXXf :: Ones(prob_data.num_static_obs, prob_data.num)).colwise() * z_static_obs;
 
-			prob_data.a_static_obs = (Eigen :: ArrayXXf :: Ones(prob_data.num_static_obs, prob_data.num)).colwise() * a_static_obs + prob_data.buffer + params["a_drone"].as<float>();
-			prob_data.b_static_obs = (Eigen :: ArrayXXf :: Ones(prob_data.num_static_obs, prob_data.num)).colwise() * b_static_obs + prob_data.buffer + params["b_drone"].as<float>();
-			prob_data.c_static_obs = (Eigen :: ArrayXXf :: Ones(prob_data.num_static_obs, prob_data.num)).colwise() * c_static_obs + prob_data.buffer + params["c_drone"].as<float>();
+			prob_data.a_static_obs = (Eigen :: ArrayXXf :: Ones(prob_data.num_static_obs, prob_data.num)).colwise() * a_static_obs + prob_data.buffer + params["a_drone"].get<float>();
+			prob_data.b_static_obs = (Eigen :: ArrayXXf :: Ones(prob_data.num_static_obs, prob_data.num)).colwise() * b_static_obs + prob_data.buffer + params["b_drone"].get<float>();
+			prob_data.c_static_obs = (Eigen :: ArrayXXf :: Ones(prob_data.num_static_obs, prob_data.num)).colwise() * c_static_obs + prob_data.buffer + params["c_drone"].get<float>();
 
 			prob_data.x_static_obs_og = prob_data.x_static_obs;
 			prob_data.y_static_obs_og = prob_data.y_static_obs;
@@ -2379,9 +2379,9 @@ namespace Optim
 			prob_data.c_static_obs_og = prob_data.c_static_obs;
 		}
 		
-		prob_data.lx_drone = params["a_drone"].as<float>();
-		prob_data.ly_drone = params["b_drone"].as<float>();
-		prob_data.lz_drone = params["c_drone"].as<float>();
+		prob_data.lx_drone = params["a_drone"].get<float>();
+		prob_data.ly_drone = params["b_drone"].get<float>();
+		prob_data.lz_drone = params["c_drone"].get<float>();
 		prob_data.rmin = prob_data.lx_drone * 2;
 		
 		// @ Inter-agent Collision Avoidance Constraints
@@ -2475,11 +2475,11 @@ namespace Optim
 		
 		// @ Constant Costs
 		prob_data.cost_ineq = prob_data.A_ineq.transpose().matrix() * prob_data.A_ineq.matrix();
-		if(prob_data.params["order_smoothness"].as<int>() == 4)
+		if(prob_data.params["order_smoothness"].get<int>() == 4)
 			prob_data.cost_smoothness = prob_data.Pddddot.transpose().matrix() * prob_data.Pddddot.matrix();
-		else if(prob_data.params["order_smoothness"].as<int>() == 3)
+		else if(prob_data.params["order_smoothness"].get<int>() == 3)
 			prob_data.cost_smoothness = prob_data.Pdddot.transpose().matrix() * prob_data.Pdddot.matrix();
-		else if(prob_data.params["order_smoothness"].as<int>() == 2)
+		else if(prob_data.params["order_smoothness"].get<int>() == 2)
 			prob_data.cost_smoothness = prob_data.Pddot.transpose().matrix() * prob_data.Pddot.matrix();
 		else	
 			LOG(ERROR) << "Invalid order_smoothness value";
@@ -2613,6 +2613,17 @@ namespace Optim
 
 		if(VERBOSE == 1)
 			Optim :: checkResiduals(prob_data, VERBOSE);
+	}
+
+	nlohmann::json loadJsonFromFile(const std::string& filepath) {
+		std::ifstream file(filepath);
+		if (!file.is_open()) {
+			throw std::runtime_error("Failed to open file: " + filepath);
+		}
+
+		nlohmann::json j;
+		file >> j;
+		return j;
 	}
 }
 

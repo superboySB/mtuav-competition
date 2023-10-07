@@ -1,7 +1,8 @@
 #pragma once
 #include <eigen3/Eigen/Dense>
+#include <nlohmann/json.hpp>
+#include <fstream>
 #include <vector>
-#include "yaml-cpp/yaml.h"
 
 
 namespace Optim
@@ -110,9 +111,7 @@ namespace Optim
         std :: vector<float> smoothness, arc_length, inter_agent_dist, agent_obs_dist, inter_agent_dist_min, agent_obs_dist_min;
         std :: vector<std :: vector<float>> pos_static_obs, dim_static_obs;
 
-        YAML :: Node params;
-
-        
+        nlohmann::json params;
     };
     
     five_var bernsteinCoeffOrder10(float n, float tmin, float tmax, Eigen :: ArrayXXf t_actual, int num);
@@ -139,4 +138,6 @@ namespace Optim
 
     void initializeOptimizer(probData &prob_data, int VERBOSE);
     void deployAgent(probData &prob_data, int VERBOSE);
+
+    nlohmann::json loadJsonFromFile(const std::string& filepath);
 }

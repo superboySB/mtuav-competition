@@ -14,7 +14,7 @@ class Simulator{
         std :: ofstream save_data, save_data_2, save_data_3, save_data_4;
 
         std :: string path;
-        YAML :: Node params;
+        nlohmann::json params;
 
         int config_num;
         int VERBOSE;

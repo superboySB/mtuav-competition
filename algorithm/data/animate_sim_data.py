@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 
-path = "/home/user/mtuav-competition/algorithm"
+path = "/workspace/mtuav-competition/algorithm/data"
 frame_directory = "sub_data"
 
 frame_directory_path = os.path.join(path, frame_directory)
@@ -22,8 +22,8 @@ else:
             print(f'Failed to delete {file_path}. Reason: {e}')
 
 
-sim_data = np.loadtxt(path + "/data/sim_data.txt")
-sim_info = np.loadtxt(path + "/data/sim_info.txt")
+sim_data = np.loadtxt(path + "/sim_data.txt")
+sim_info = np.loadtxt(path + "/sim_info.txt")
 
 dt = float(sim_info[0][2])
 num_obs = int(sim_info[0][1])
@@ -184,7 +184,7 @@ for frame in frames:
     frame_path = os.path.join(frame_directory_path, frame)
     images.append(imageio.imread(frame_path))
 
-imageio.mimsave('animate.gif', images, duration=0.1,loop=0) # 0.1 是每帧的持续时间，您可以根据需要进行调整
+imageio.mimsave(path+'/animate.gif', images, duration=0.1,loop=0) # 0.1 是每帧的持续时间，您可以根据需要进行调整
 
 
 

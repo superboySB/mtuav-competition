@@ -6,14 +6,14 @@
 
 int main()
 {
-    YAML :: Node params = YAML :: LoadFile("/home/user/mtuav-competition/algorithm/params/config_sim_swarm.yaml");
+    nlohmann::json params = Optim::loadJsonFromFile("/workspace/mtuav-competition/algorithm/params/config_sim_swarm.json");
 
-    int start_config = params["start_config"].as<int>(); 
-    int end_config = params["end_config"].as<int>(); 
-    bool read_config = params["read_config"].as<bool>();
-    bool use_model = params["use_model"].as<bool>();
-    std :: vector<float> noise = params["noise"].as<std::vector<float>>();
-    std :: vector<float> num_drones = params["num_drones"].as<std::vector<float>>();
+    int start_config = params["start_config"].get<int>(); 
+    int end_config = params["end_config"].get<int>(); 
+    bool read_config = params["read_config"].get<bool>();
+    bool use_model = params["use_model"].get<bool>();
+    std :: vector<float> noise = params["noise"].get<std::vector<float>>();
+    std :: vector<float> num_drones = params["num_drones"].get<std::vector<float>>();
 
     for(int j = 0; j < num_drones.size(); j++){
         if(read_config)

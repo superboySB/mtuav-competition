@@ -5,31 +5,31 @@
 
 
 Simulator :: Simulator(int cf_num, bool read_cf, int num_drones, bool use_model, std::vector<float> noise){
-    path = "/home/user/mtuav-competition/algorithm";
+    path = "/workspace/mtuav-competition/algorithm";
 
-    params = YAML :: LoadFile(path + "/params/config_am_swarm.yaml");
+    params = Optim::loadJsonFromFile(path + "/params/config_am_swarm.json");
 
     read_config = read_cf;
     config_num = cf_num;    
 
-    VERBOSE = params["verbose"].as<int>();
+    VERBOSE = params["verbose"].get<int>();
     
-    num = params["num"].as<int>();
-    num_up = params["num_up"].as<int>();
+    num = params["num"].get<int>();
+    num_up = params["num_up"].get<int>();
     if(read_config)
         num_drone = num_drones;
     else
-        num_drone = params["num_drone"].as<int>();
+        num_drone = params["num_drone"].get<int>();
     
-    free_space = params["free_space"].as<bool>();
+    free_space = params["free_space"].get<bool>();
 
-    a_drone = params["a_drone"].as<float>();
-    b_drone = params["b_drone"].as<float>();
-    c_drone = params["c_drone"].as<float>();
+    a_drone = params["a_drone"].get<float>();
+    b_drone = params["b_drone"].get<float>();
+    c_drone = params["c_drone"].get<float>();
     
-    max_time = params["max_time"].as<float>();
-    t_plan = params["t_plan"].as<float>();
-    dist_stop = params["dist_stop"].as<float>();
+    max_time = params["max_time"].get<float>();
+    t_plan = params["t_plan"].get<float>();
+    dist_stop = params["dist_stop"].get<float>();
     dt = t_plan/num;
 
     success = false;
@@ -48,11 +48,11 @@ Simulator :: Simulator(int cf_num, bool read_cf, int num_drones, bool use_model,
     dist_to_goal = Eigen :: ArrayXf(num_drone);
 
     if(!read_config){
-        _init_drone = params["init_drone"].as< std :: vector<std::vector<float>>>();
-        _goal_drone = params["goal_drone"].as< std :: vector<std::vector<float>>>();
+        _init_drone = params["init_drone"].get< std :: vector<std::vector<float>>>();
+        _goal_drone = params["goal_drone"].get< std :: vector<std::vector<float>>>();
 
-        _pos_static_obs = params["pos_static_obs"].as< std :: vector<std::vector<float>>>();
-        _dim_static_obs = params["dim_static_obs"].as< std :: vector<std::vector<float>>>();
+        _pos_static_obs = params["pos_static_obs"].get< std :: vector<std::vector<float>>>();
+        _dim_static_obs = params["dim_static_obs"].get< std :: vector<std::vector<float>>>();
 
         num_obs = _pos_static_obs.size();
         if(free_space) num_obs = 0;
@@ -71,7 +71,7 @@ Simulator :: Simulator(int cf_num, bool read_cf, int num_drones, bool use_model,
         std :: string file_path;
                 
         num_obs_2 = 16;
-        num_obs = params["num_obs"].as<int>();
+        num_obs = params["num_obs"].get<int>();
         
         file_path = path+"/data/point_to_point/config_data/varying_agents/obs_" + std::to_string(num_obs_2) +"/drone_" +std :: to_string(num_drone)+"_config_"+std :: to_string(config_num)+".txt";
             
@@ -102,12 +102,12 @@ Simulator :: Simulator(int cf_num, bool read_cf, int num_drones, bool use_model,
     }
 
     if(read_config){
-        if(params["gamma"].as<float>() == 1.0) 
+        if(params["gamma"].get<float>() == 1.0) 
             folder_name << "";
         else 
-            folder_name << "_gamma_"<< std::setprecision(2) << params["gamma"].as<float>();
+            folder_name << "_gamma_"<< std::setprecision(2) << params["gamma"].get<float>();
 
-        if(params["axis_wise"].as<bool>())
+        if(params["axis_wise"].get<bool>())
             save_data.open(path+"/data/point_to_point/config_data/varying_agents/obs_" + std::to_string(num_obs) +"/results_am_ax"+folder_name.str()+"/sim_info_drone_" +std :: to_string(num_drone)+"_config_"+std :: to_string(config_num)+".txt");
         else
             save_data.open(path+"/data/point_to_point/config_data/varying_agents/obs_" + std::to_string(num_obs) +"/results_am_qd"+folder_name.str()+"/sim_info_drone_" +std :: to_string(num_drone)+"_config_"+std :: to_string(config_num)+".txt");
@@ -299,7 +299,7 @@ void Simulator :: checkViolation(){
 void Simulator :: runSimulation(){
     
     if(read_config){
-        if(params["axis_wise"].as<bool>()){
+        if(params["axis_wise"].get<bool>()){
             save_data.open(path+"/data/point_to_point/config_data/varying_agents/obs_" + std::to_string(num_obs) +"/results_am_ax"+folder_name.str()+"/sim_data_drone_" +std :: to_string(num_drone)+"_config_"+std :: to_string(config_num)+".txt");
             save_data_2.open(path+"/data/point_to_point/config_data/varying_agents/obs_" + std::to_string(num_obs) +"/results_am_ax"+folder_name.str()+"/sim_residue_drone_" +std :: to_string(num_drone)+"_config_"+std :: to_string(config_num)+".txt");       
             }
