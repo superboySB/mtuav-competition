@@ -9,7 +9,7 @@ RUN apt-get update && apt-get install -y locales && locale-gen en_US.UTF-8
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata net-tools vim git htop wget curl zip unzip build-essential dpkg\
     libssl-dev libglpk-dev gdb libgoogle-glog-dev libboost-program-options-dev cmake ca-certificates clang ntpdate gnupg g++-10\
     clang-tidy clang-format lsb-release netbase libnlopt-cxx-dev gfortran nlohmann-json3-dev libyaml-cpp-dev
-RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtim
+RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo "Asia/Shanghai" > /etc/timezone
 
 # Install OR-tools
 # RUN cd /workspace && git clone https://github.com/google/or-tools
