@@ -166,6 +166,7 @@ int64_t myAlgorithm::solve() {
     }
 
     // 示例策略2：为电量小于指定数值的无人机生成换电航线
+
     for (auto the_drone : drones_need_recharge) {
         auto battery_stations = this->_task_info->battery_stations;
         // 没有换电站，无法执行换电操作
@@ -227,7 +228,7 @@ int64_t myAlgorithm::solve() {
             FlightPlan delivery;
             auto [delivery_traj, delivery_flight_time] = this->trajectory_generation(
                 the_drone.position, the_cargo.target_position, the_drone);
-            if (delivery_flight_time = -1) {
+            if (delivery_flight_time == -1) {
                 // 轨迹生成失败
                 LOG(INFO) << "trajectory generation failed. ";
                 break;
@@ -272,48 +273,47 @@ int64_t myAlgorithm::solve() {
     return sleep_time_ms;
 }
 
-// waypoints_generation(简单，无额外奖励)  二选一即可
-// std::tuple<std::vector<Segment>, int64_t> myAlgorithm::waypoints_generation(Vec3 start, Vec3 end) {
-//     // TODO 参赛选手需要自行设计算法，生成对应的waypoint
-//     std::vector<Segment> waypoints;
-//     // 获取地图信息
-//     // this->_map; 调用打印
+// waypoints_generation(简单，无额外奖励) 二选一即可
+std::tuple<std::vector<Segment>, int64_t> myAlgorithm::waypoints_generation(Vec3 start, Vec3 end) {
+    // TODO 参赛选手需要自行设计算法，生成对应的waypoint
+    std::vector<Segment> waypoints;
+    // 获取地图信息
+    // this->_map; 调用打印
 
-//     // 定义4个轨迹点
-//     Segment p1, p2;  // p1 起点， p2, 起点上方高度120米
-//     p1.position = start;
-//     Vec3 p2_pos;
-//     p2_pos.x = start.x;
-//     p2_pos.y = start.y;
-//     p2_pos.z = 120;
-//     p2.position = p2_pos;
-//     p1.time_ms = 0;      // 第一个点的时间设置为0
-//     p2.time_ms = 25000;  // 起飞25秒  表示从上一个点到这点耗时34秒
-//     p1.seg_type = 0;
-//     p2.seg_type = 0;
-//     Segment p3, p4;  // p3 终点上方高度120米，p4 终点
-//     Vec3 p3_pos;
-//     p3_pos.x = end.x;
-//     p3_pos.y = end.y;
-//     p3_pos.z = 120;
-//     p3.position = p3_pos;
-//     p3.time_ms = 120000;  // 平飞120秒
-//     p3.seg_type = 1;
-//     p4.position = end;
-//     p4.time_ms = 25000;  // 降落25秒
-//     p4.seg_type = 2;
+    // 定义4个轨迹点
+    Segment p1, p2;  // p1 起点， p2, 起点上方高度120米
+    p1.position = start;
+    Vec3 p2_pos;
+    p2_pos.x = start.x;
+    p2_pos.y = start.y;
+    p2_pos.z = 120;
+    p2.position = p2_pos;
+    p1.time_ms = 0;      // 第一个点的时间设置为0
+    p2.time_ms = 25000;  // 起飞25秒
+    p1.seg_type = 0;
+    p2.seg_type = 0;
+    Segment p3, p4;  // p3 终点上方高度120米，p4 终点
+    Vec3 p3_pos;
+    p3_pos.x = end.x;
+    p3_pos.y = end.y;
+    p3_pos.z = 120;
+    p3.position = p3_pos;
+    p3.time_ms = 145000;  // 起飞时长+ 平飞时长
+    p3.seg_type = 1;
+    p4.position = end;
+    p4.time_ms = 170000;  // 起飞时长+ 平飞时长 + 降落时长
+    p4.seg_type = 2;
 
-//     // 轨迹点存入trajectory中
-//     // waypoints.push_back(p1);
-//     waypoints.push_back(p2);
-//     waypoints.push_back(p3);
-//     waypoints.push_back(p4);
+    // 轨迹点存入trajectory中
+    // waypoints.push_back(p1);
+    waypoints.push_back(p2);
+    waypoints.push_back(p3);
+    waypoints.push_back(p4);
 
-//     // 计算总时间
-//     int64_t flight_time = (35000 + 200000 + 35000);  // 单位毫秒；
-//     return {waypoints, flight_time};
-// }
-
+    // 计算总时间
+    int64_t flight_time = (35000 + 200000 + 35000);  // 单位毫秒；
+    return {waypoints, flight_time};
+}
 
 // trajectory_generation(复杂，有额外奖励) 二选一即可
 std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec3 start, Vec3 end,
