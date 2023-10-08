@@ -13,9 +13,9 @@ find_package(nlohmann_json REQUIRED)
 
 # 添加API路径
 include_directories(api/)
-
-#添加算法头文件路径
 include_directories(algorithm/include/)
+include_directories(/usr/local/include/ortools/)
+link_directories(/usr/local/lib)
 
 #添加算法源文件路径
 file(GLOB DIR_SRCS_MAIN "${PROJECT_SOURCE_DIR}/algorithm/*.cpp")
@@ -54,6 +54,11 @@ set(TEST_AM_SRC tests/test_am.cpp
 )
 add_executable(test_am ${TEST_AM_SRC})
 target_link_libraries(test_am eigen-quadprog nlohmann_json -lpthread -lglog)
+
+# 添加ortools的单独测试路径
+set(TEST_ORTOOLS_SRC tests/test_ortools.cpp)
+add_executable(test_ortools ${TEST_ORTOOLS_SRC})
+target_link_libraries(test_ortools ortools -lpthread -lglog)
 # ------------------------------------------------------------------------------------------
 
 # 美团库文件安装到指定的位置

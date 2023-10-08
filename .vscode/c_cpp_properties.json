@@ -6,8 +6,7 @@
           "${workspaceFolder}/algorithm/**",
           "${workspaceFolder}/api/**",
           "${workspaceFolder}/libs/**",
-          "${workspaceFolder}/map/**",
-          "/workspace/RVO2-3D/src/**"
+          "${workspaceFolder}/map/**"
         ],
         "defines": [],
         "compilerPath": "/usr/bin/gcc",
