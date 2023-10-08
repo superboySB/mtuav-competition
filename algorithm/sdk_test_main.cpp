@@ -84,6 +84,10 @@ int main(int argc, const char* argv[]) {
                   << ", task id: " << task->task_id;
     }
 
+    MT_LOG("get task %d, id: %d, drones: %d, bs: %d, lp: %d", task_idx,
+         task->task_id, task->drones.size(),
+         task->battery_stations.size(), task->landing_positions.size());
+
     // 声明比赛动态信息获取类（用于获取无人机实时状态，订单实时状态）
     std::shared_ptr<DynamicGameInfo> dynamic_info = DynamicGameInfo::getDynamicGameInfoPtr();
     // 设置任务结束标识符为false

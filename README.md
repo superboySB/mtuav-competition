@@ -51,7 +51,8 @@ docker start mtuav-vis mtuav-alg
 确保服务器执行`netstat -tulp`中有`8888`的监听后，再编译源码运行SDK
 ```sh
 # 编译
-mkdir build && cd build && cmake .. && make && make install
+# mkdir build && cd build && cmake .. && make && make install
+cmake -S . -B build && cmake --build build --target all -j -v && cmake --build build --target install -v
 
 # 运行
 ./mtuav_sdk_example
