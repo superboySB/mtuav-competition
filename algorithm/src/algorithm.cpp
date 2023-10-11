@@ -137,11 +137,11 @@ int64_t myAlgorithm::solve() {
                   << ", target: " << the_cargo.target_position.x << " "
                   << the_cargo.target_position.y << " " << the_cargo.target_position.z;
         FlightPlan pickup;
-        // TODO 参赛选手需要自己实现一个轨迹生成函数或中转点生成函数（trajectory复杂/waypoint简单）
+        // TODO 参赛选手需要自己实现一个轨迹生成函数或中转点生成函数
         auto [pickup_waypoints, pickup_flight_time] = this->trajectory_generation(
-            the_drone.position, the_cargo.position, the_drone);  //暂时都使用轨迹生成函数，不使用中转点生成函数
+            the_drone.position, the_cargo.position, the_drone);  //此处使用轨迹生成函数
         // auto [pickup_waypoints, pickup_flight_time] = this->waypoints_generation(
-        //     the_drone.position, the_cargo.position);
+        //     the_drone.position, the_cargo.position);  //此处使用中转点生成函数
         pickup.target_cargo_ids.push_back(the_cargo.id);
         pickup.flight_purpose = FlightPurpose::FLIGHT_TAKE_CARGOS;  // 飞行计划目标
         // pickup.flight_plan_type = FlightPlanType::PLAN_WAY_POINTS;  // 飞行计划类型：中转点
@@ -151,10 +151,7 @@ int64_t myAlgorithm::solve() {
         pickup.segments = pickup_waypoints;
         // 在下发飞行计划前，选手可以使用该函数自行先校验飞行计划的可行性
         // 注意ValidateFlightPlan 只能校验起点/终点均在地面上的飞行计划
-        //（实际比赛时可以注释掉这里）
-        // auto reponse_pickup = this->_planner->ValidateFlightPlan(drone_limits, your_flight_plan);
-        // LOG(INFO) << "Result of ValidateFlightPlan: " << reponse_pickup;
-        
+        // auto reponse_pickup = this->_planner->ValidateFlightPlan(drone_limits, your_flight_plan)
         flight_plans_to_publish.push_back({the_drone.drone_id, pickup});
         LOG(INFO) << "Successfully generated flight plan, flight id: " << pickup.flight_id
                   << ", drone id: " << the_drone.drone_id
@@ -273,7 +270,7 @@ int64_t myAlgorithm::solve() {
     return sleep_time_ms;
 }
 
-// waypoints_generation(简单，无额外奖励) 二选一即可
+// waypoints_generation(简单，无额外奖励) 和 trajectory_generation(复杂，有额外奖励) 二选一即可
 std::tuple<std::vector<Segment>, int64_t> myAlgorithm::waypoints_generation(Vec3 start, Vec3 end) {
     // TODO 参赛选手需要自行设计算法，生成对应的waypoint
     std::vector<Segment> waypoints;
@@ -315,7 +312,7 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::waypoints_generation(Vec3
     return {waypoints, flight_time};
 }
 
-// trajectory_generation(复杂，有额外奖励) 二选一即可
+// waypoints_generation(简单，无额外奖励) 和 trajectory_generation(复杂，有额外奖励) 二选一即可
 std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec3 start, Vec3 end,
                                                                              DroneStatus drone) {
     std::vector<Segment> traj_segs;
@@ -350,7 +347,7 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
     p4.seg_type = 2;
 
     // 获取无人机的性能指标
-    // 此处假设所有无人机均为同型号（dzp：这是一个重要假设！！！）
+    // 此处假设所有无人机均为同型号
     DroneLimits dl = this->_task_info->drones.front().drone_limits;
 
     // 生成p1->p2段轨迹点
