@@ -5,8 +5,9 @@ project("mtuav-competition")
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fthreadsafe-statics -fvisibility-inlines-hidden")
 
-# 如果想要默认进行 Debug 编译，可以加入以下行：
-# set(CMAKE_BUILD_TYPE Debug)
+# 确保在调试版本中生成了完整的调试信息
+set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
+set(CMAKE_BUILD_TYPE Debug)
 
 # 依赖包
 find_package(OpenMP)

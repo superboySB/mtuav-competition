@@ -1,55 +1,113 @@
 {
   "version": "0.2.0",
   "configurations": [
-    {
-      "name": "Debug mtuav-competition",
-      "type": "cppdbg",
-      "request": "launch",
-      "program": "${workspaceFolder}/build/mtuav_sdk_example",
-      "args": [],
-      "stopAtEntry": false,
-      "cwd": "${workspaceFolder}",
-      "preLaunchTask": "build mtuav-competition",
-      "environment": [],
-      "externalConsole": false,
-      "MIMode": "gdb",
-      "setupCommands": [
-          {
-              "description": "Enable pretty-printing for gdb",
-              "text": "-enable-pretty-printing",
-              "ignoreFailures": true
+      {
+          "name": "debug mtuav",
+          "type": "cppdbg",
+          "request": "launch",
+          "program": "${workspaceFolder}/build/mtuav_sdk_example",
+          "args": [],
+          "stopAtEntry": false,
+          "cwd": "${workspaceFolder}",
+          "environment": [
+              {
+                  "name": "LD_LIBRARY_PATH",
+                  "value": "${env:LD_LIBRARY_PATH}:/workspace/mtuav-competition/libs/"
+              }
+          ],
+          "externalConsole": false,
+          "MIMode": "gdb",
+          "setupCommands": [
+              {
+                  "description": "Enable pretty-printing for gdb",
+                  "text": "-enable-pretty-printing",
+                  "ignoreFailures": true
+              }
+          ],
+          "preLaunchTask": "build debug",
+          "miDebuggerPath": "/usr/bin/gdb",
+          "logging": { "trace": false, "traceResponse": false, "engineLogging": true },
+          "linux": {
+              "MIMode": "gdb"
           },
-          {
-              "description": "Set Disassembly Flavor to Intel",
-              "text": "-gdb-set disassembly-flavor intel",
-              "ignoreFailures": true
+          "windows": {
+              "MIMode": "gdb"
+          },
+          "osx": {
+              "MIMode": "lldb"
           }
-      ]
-    },
-    {
-        "name": "Debug vroom",
+      },
+      {
+        "name": "debug am",
         "type": "cppdbg",
         "request": "launch",
-        "program": "${workspaceFolder}/reference/libvroom/libvroom-example",
+        "program": "${workspaceFolder}/build/test_am",
         "args": [],
         "stopAtEntry": false,
-        "cwd": "${workspaceFolder}/reference/libvroom",
-        "preLaunchTask": "make build vroom",
-        "environment": [],
+        "cwd": "${workspaceFolder}",
+        "environment": [
+            {
+                "name": "LD_LIBRARY_PATH",
+                "value": "${env:LD_LIBRARY_PATH}:/workspace/mtuav-competition/libs/"
+            }
+        ],
         "externalConsole": false,
         "MIMode": "gdb",
         "setupCommands": [
-          {
-            "description": "Enable pretty-printing for gdb",
-            "text": "-enable-pretty-printing",
-            "ignoreFailures": true
-          },
-          {
-            "description": "Set Disassembly Flavor to Intel",
-            "text": "-gdb-set disassembly-flavor intel",
-            "ignoreFailures": true
-          }
-        ]
-      }
+            {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            }
+        ],
+        "preLaunchTask": "build debug",
+        "miDebuggerPath": "/usr/bin/gdb",
+        "logging": { "trace": false, "traceResponse": false, "engineLogging": true},
+        "linux": {
+            "MIMode": "gdb"
+        },
+        "windows": {
+            "MIMode": "gdb"
+        },
+        "osx": {
+            "MIMode": "lldb"
+        }
+    },
+    {
+        "name": "debug ortools",
+        "type": "cppdbg",
+        "request": "launch",
+        "program": "${workspaceFolder}/build/test_ortools",
+        "args": [],
+        "stopAtEntry": false,
+        "cwd": "${workspaceFolder}",
+        "environment": [
+            {
+                "name": "LD_LIBRARY_PATH",
+                "value": "${env:LD_LIBRARY_PATH}:/workspace/mtuav-competition/libs/"
+            }
+        ],
+        "externalConsole": false,
+        "MIMode": "gdb",
+        "setupCommands": [
+            {
+                "description": "Enable pretty-printing for gdb",
+                "text": "-enable-pretty-printing",
+                "ignoreFailures": true
+            }
+        ],
+        "preLaunchTask": "build debug",
+        "miDebuggerPath": "/usr/bin/gdb",
+        "logging": { "trace": false, "traceResponse": false, "engineLogging": true},
+        "linux": {
+            "MIMode": "gdb"
+        },
+        "windows": {
+            "MIMode": "gdb"
+        },
+        "osx": {
+            "MIMode": "lldb"
+        }
+    }
   ]
 }

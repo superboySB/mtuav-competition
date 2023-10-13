@@ -50,9 +50,8 @@ docker start mtuav-vis mtuav-alg
 ```
 确保服务器执行`netstat -tulp`中有`8888`的监听后，再编译源码运行SDK
 ```sh
-# 编译
-mkdir build && cd build && cmake .. && make
-# cmake -S . -B build && cmake --build build --target all -j -v && cmake --build build --target install -v
+# 直接编译
+mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make
 
 # 运行
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/workspace/mtuav-competition/libs/ && ./mtuav_sdk_example
@@ -67,7 +66,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/workspace/mtuav-competition/libs/ && ./
 在算法镜像内，**每次下拉更新代码、需要重新运行算法时**，确保源代码中`planner.h`和`sdk_test_main.cpp`中相应的`Planner`和`Login`方法以及`map地址`配置正确，然后直接编译源码运行SDK
 ```sh
 # 编译
-mkdir build && cd build && cmake .. && make
+mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make
 
 # 运行
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/workspace/mtuav-competition/libs/ &&  ./mtuav_sdk_example
