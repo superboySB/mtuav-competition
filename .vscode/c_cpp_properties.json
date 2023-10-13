@@ -3,10 +3,7 @@
       {
         "name": "Linux",
         "includePath": [
-          "${workspaceFolder}/algorithm/**",
-          "${workspaceFolder}/api/**",
-          "${workspaceFolder}/libs/**",
-          "${workspaceFolder}/map/**"
+          "${workspaceFolder}/**"
         ],
         "defines": [],
         "compilerPath": "/usr/bin/gcc",

@@ -1,16 +1,14 @@
 #include <glog/logging.h>
 #include "mtuav_sdk.h"
 
-using namespace mtuav;
-
-int main(int argc, const char* argv[]) {
+int main() {
     // 初始化glog
     google::InitGoogleLogging("test_map");
     google::SetLogDestination(google::GLOG_INFO, "/workspace/mtuav-competition/log/test_map.log");
     FLAGS_alsologtostderr = false;  // 只输出到文件，不输出到stderr
 
     // 加载地图
-    auto map = Map::CreateMapFromFile("/workspace/mtuav-competition/map/test_map.bin");
+    auto map = mtuav::Map::CreateMapFromFile("/workspace/mtuav-competition/map/test_map.bin");
 
     if (map == nullptr) {
         LOG(ERROR) << "Failed to load the map.";
@@ -31,7 +29,7 @@ int main(int argc, const char* argv[]) {
     for (float x = min_x; x <= max_x; x += 10) {
         for (float y = min_y; y <= max_y; y += 10) {
             for (float z = min_z; z <= max_z; z += 10) {
-                const Voxel* voxel = map->Query(x, y, z);
+                const mtuav::Voxel* voxel = map->Query(x, y, z);
                 if (voxel != nullptr) {
                     LOG(INFO) << "Voxel at (" << x << ", " << y << ", " << z << "): "
                               << "Distance: " << voxel->distance

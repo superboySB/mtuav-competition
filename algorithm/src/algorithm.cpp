@@ -1,6 +1,6 @@
 #include <glog/logging.h>
 #include <algorithm>    // C++ STL 算法库
-#include "algorihtm.h"  // 选手自行设计的算法头文件
+#include "algorithm.h"  // 选手自行设计的算法头文件
 #include "math.h"
 
 namespace mtuav::algorithm {
@@ -137,11 +137,11 @@ int64_t myAlgorithm::solve() {
                   << ", target: " << the_cargo.target_position.x << " "
                   << the_cargo.target_position.y << " " << the_cargo.target_position.z;
         FlightPlan pickup;
-        // TODO 参赛选手需要自己实现一个轨迹生成函数或中转点生成函数
+        // TODO 参赛选手需要自己实现一个轨迹生成函数或中转点生成函数（trajectory复杂/waypoint简单）
         auto [pickup_waypoints, pickup_flight_time] = this->trajectory_generation(
-            the_drone.position, the_cargo.position, the_drone);  //此处使用轨迹生成函数
+            the_drone.position, the_cargo.position, the_drone);  //暂时都使用轨迹生成函数，不使用中转点生成函数
         // auto [pickup_waypoints, pickup_flight_time] = this->waypoints_generation(
-        //     the_drone.position, the_cargo.position);  //此处使用中转点生成函数
+        //     the_drone.position, the_cargo.position);
         pickup.target_cargo_ids.push_back(the_cargo.id);
         pickup.flight_purpose = FlightPurpose::FLIGHT_TAKE_CARGOS;  // 飞行计划目标
         // pickup.flight_plan_type = FlightPlanType::PLAN_WAY_POINTS;  // 飞行计划类型：中转点
@@ -151,7 +151,10 @@ int64_t myAlgorithm::solve() {
         pickup.segments = pickup_waypoints;
         // 在下发飞行计划前，选手可以使用该函数自行先校验飞行计划的可行性
         // 注意ValidateFlightPlan 只能校验起点/终点均在地面上的飞行计划
-        // auto reponse_pickup = this->_planner->ValidateFlightPlan(drone_limits, your_flight_plan)
+        //（实际比赛时可以注释掉这里）
+        // auto reponse_pickup = this->_planner->ValidateFlightPlan(drone_limits, your_flight_plan);
+        // LOG(INFO) << "Result of ValidateFlightPlan: " << reponse_pickup;
+        
         flight_plans_to_publish.push_back({the_drone.drone_id, pickup});
         LOG(INFO) << "Successfully generated flight plan, flight id: " << pickup.flight_id
                   << ", drone id: " << the_drone.drone_id
@@ -163,7 +166,6 @@ int64_t myAlgorithm::solve() {
     }
 
     // 示例策略2：为电量小于指定数值的无人机生成换电航线
-
     for (auto the_drone : drones_need_recharge) {
         auto battery_stations = this->_task_info->battery_stations;
         // 没有换电站，无法执行换电操作
@@ -347,7 +349,7 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
     p4.seg_type = 2;
 
     // 获取无人机的性能指标
-    // 此处假设所有无人机均为同型号
+    // 此处假设所有无人机均为同型号（dzp：这是一个重要假设！！！）
     DroneLimits dl = this->_task_info->drones.front().drone_limits;
 
     // 生成p1->p2段轨迹点

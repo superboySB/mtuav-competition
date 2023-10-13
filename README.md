@@ -51,11 +51,11 @@ docker start mtuav-vis mtuav-alg
 确保服务器执行`netstat -tulp`中有`8888`的监听后，再编译源码运行SDK
 ```sh
 # 编译
-# mkdir build && cd build && cmake .. && make && make install
-cmake -S . -B build && cmake --build build --target all -j -v && cmake --build build --target install -v
+mkdir build && cd build && cmake .. && make
+# cmake -S . -B build && cmake --build build --target all -j -v && cmake --build build --target install -v
 
 # 运行
-./mtuav_sdk_example
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/workspace/mtuav-competition/libs/ && ./mtuav_sdk_example
 ```
 之后，在客户机的浏览器启动网址`http://<server-ip>:8888`，内网（本机工作站）下可以直接该访问服务器。此时m要选择文件在sdk的`visualization/test`内部，一定要同时选择两个`.txt`文件。**注意，SDK在StartTask 后不要退出，退出后服务会关闭任务，同时也会关闭可视化程序。**
 
@@ -67,10 +67,9 @@ cmake -S . -B build && cmake --build build --target all -j -v && cmake --build b
 在算法镜像内，**每次下拉更新代码、需要重新运行算法时**，确保源代码中`planner.h`和`sdk_test_main.cpp`中相应的`Planner`和`Login`方法以及`map地址`配置正确，然后直接编译源码运行SDK
 ```sh
 # 编译
-# mkdir build && cd build && cmake .. && make && make install
-cmake -S . -B build && cmake --build build --target all -j -v && cmake --build build --target install -v
+mkdir build && cd build && cmake .. && make
 
 # 运行
-./mtuav_sdk_example
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/workspace/mtuav-competition/libs/ &&  ./mtuav_sdk_example
 ```
 不同于单机镜像，在线⽐赛系统地图尺寸更大、任务时间更久，且**没有可视化窗⼝**，⻜机状态只能通过代码来判断，规划时，要给⻜机电量留余量，极限规划可能引发坠机（电量<1%时随机坠机）。建议：先使⽤单机镜像调试代码（地图和场景相对简单），然后连接在线系统进⾏测试。强⼤的算⼒对算法会有些帮助，但不是决定性的。充分利⽤已知信息，提前最好预计算；充分利⽤多核计算能⼒；任何时候都优先考虑⻜⾏安全。
