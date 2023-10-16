@@ -4,24 +4,18 @@
 #include <thread>
 
 
-Simulator :: Simulator(int cf_num, bool read_cf, int num_drones, bool use_model, std::vector<float> noise){
+Simulator :: Simulator(){
     path = "/workspace/mtuav-competition/algorithm";
-
     params = Optim::loadJsonFromFile(path + "/params/config_am_swarm.json");
 
-    read_config = read_cf;
-    config_num = cf_num;    
+    config_num = 0;    
 
     VERBOSE = params["verbose"].get<int>();
     
     num = params["num"].get<int>();
     num_up = params["num_up"].get<int>();
-    if(read_config)
-        num_drone = num_drones;
-    else
-        num_drone = params["num_drone"].get<int>();
+    num_drone = params["num_drone"].get<int>();
     
-    free_space = params["free_space"].get<bool>();
 
     a_drone = params["a_drone"].get<float>();
     b_drone = params["b_drone"].get<float>();
@@ -47,74 +41,24 @@ Simulator :: Simulator(int cf_num, bool read_cf, int num_drones, bool use_model,
     arc_length = Eigen :: ArrayXf(num_drone);
     dist_to_goal = Eigen :: ArrayXf(num_drone);
 
-    if(!read_config){
-        _init_drone = params["init_drone"].get< std :: vector<std::vector<float>>>();
-        _goal_drone = params["goal_drone"].get< std :: vector<std::vector<float>>>();
+    _init_drone = params["init_drone"].get< std :: vector<std::vector<float>>>();
+    _goal_drone = params["goal_drone"].get< std :: vector<std::vector<float>>>();
 
-        _pos_static_obs = params["pos_static_obs"].get< std :: vector<std::vector<float>>>();
-        _dim_static_obs = params["dim_static_obs"].get< std :: vector<std::vector<float>>>();
+    _pos_static_obs = params["pos_static_obs"].get< std :: vector<std::vector<float>>>();
+    _dim_static_obs = params["dim_static_obs"].get< std :: vector<std::vector<float>>>();
 
-        num_obs = _pos_static_obs.size();
-        if(free_space) num_obs = 0;
-        
-        if(_pos_static_obs.size() != _dim_static_obs.size())
-            LOG(ERROR) << "pos_obs and dim_obs sizes do not match";
+    num_obs = _pos_static_obs.size();
+    
+    if(_pos_static_obs.size() != _dim_static_obs.size())
+        LOG(ERROR) << "pos_obs and dim_obs sizes do not match";
 
-        if(num_drone > _init_drone.size()){
-            num_drone = _init_drone.size();
-            LOG(WARNING) << "num_drone does not match size with given start-goal configurations";
-        }
-        LOG(INFO) << "Number of drones " << num_drone;
+    if(num_drone > _init_drone.size()){
+        num_drone = _init_drone.size();
+        LOG(WARNING) << "num_drone does not match size with given start-goal configurations";
     }
-    else{
-        Eigen :: ArrayXXf config_data(1000, 1);
-        std :: string file_path;
-                
-        num_obs_2 = 16;
-        num_obs = params["num_obs"].get<int>();
-        
-        file_path = path+"/data/point_to_point/config_data/varying_agents/obs_" + std::to_string(num_obs_2) +"/drone_" +std :: to_string(num_drone)+"_config_"+std :: to_string(config_num)+".txt";
-            
-        std :: ifstream read_data(file_path);
-        if (!read_data.is_open()) {
-            LOG(ERROR) << "There was a problem opening the input file!\n";
-        }
-
-        int k = 0;
-        while (read_data >> config_data(k) >> config_data(k+1) >> config_data(k+2)) 
-            k+=3;
-
-        config_data.conservativeResize(k, 1);
-        config_data = (Optim :: reshape(config_data, 3, num_drone*2 + num_obs*2)).transpose();
-        
-        Eigen :: ArrayXXf obs_data = config_data.bottomRows(2*num_obs);
-        
-        for(int i = 0; i < num_obs; i++){
-            _pos_static_obs.push_back({obs_data(i, 0), obs_data(i, 1), obs_data(i, 2)});
-            _dim_static_obs.push_back({obs_data(i+num_obs, 0), obs_data(i+num_obs, 1), obs_data(i+num_obs, 2)});
-        }
-        
-        for(int i = 0; i < num_drone; i++){            
-            _init_drone.push_back({config_data(i, 0), config_data(i, 1), config_data(i, 2)});
-            _goal_drone.push_back({config_data(i+num_drone, 0), config_data(i+num_drone, 1), config_data(i+num_drone, 2)});
-        }
-        
-    }
-
-    if(read_config){
-        if(params["gamma"].get<float>() == 1.0) 
-            folder_name << "";
-        else 
-            folder_name << "_gamma_"<< std::setprecision(2) << params["gamma"].get<float>();
-
-        if(params["axis_wise"].get<bool>())
-            save_data.open(path+"/data/point_to_point/config_data/varying_agents/obs_" + std::to_string(num_obs) +"/results_am_ax"+folder_name.str()+"/sim_info_drone_" +std :: to_string(num_drone)+"_config_"+std :: to_string(config_num)+".txt");
-        else
-            save_data.open(path+"/data/point_to_point/config_data/varying_agents/obs_" + std::to_string(num_obs) +"/results_am_qd"+folder_name.str()+"/sim_info_drone_" +std :: to_string(num_drone)+"_config_"+std :: to_string(config_num)+".txt");
-            
-    }
-    else
-        save_data.open(path+"/data/sim_info.txt");
+    LOG(INFO) << "Number of drones " << num_drone;
+    
+    save_data.open(path+"/data/sim_info.txt");
     save_data << num_drone << " " << num_obs << " " << dt << "\n"; 
     save_data << a_drone << " " << b_drone << " " << c_drone << "\n"; 
     
@@ -143,10 +87,6 @@ Simulator :: Simulator(int cf_num, bool read_cf, int num_drones, bool use_model,
         
         prob_data[i].params = params;
         prob_data[i].mpc_step = 0;
-
-        prob_data[i].use_model = use_model;
-        prob_data[i].mean = noise[0];
-        prob_data[i].stdev = noise[1];
     }
     
 }
@@ -261,59 +201,43 @@ void Simulator :: checkViolation(){
 			out_space = true;
             LOG(WARNING) << "Positional bounds not satisfied in z " << prob_data[i].z_init << " " << prob_data[i].z_min << " " << prob_data[i].z_max;
         }
-		if(prob_data[i].axis_wise){
-			if(std::floor(abs(prob_data[i].vx_init)/prob_data[i].thresold)*prob_data[i].thresold > prob_data[i].vel_max + 0.01){
-				LOG(WARNING) << "Velocity bounds not satisfied in x " << abs(prob_data[i].vx_init) << " " << prob_data[i].vel_max;
-                out_space = true;
-            }
-			if(std::floor(abs(prob_data[i].vy_init)/prob_data[i].thresold)*prob_data[i].thresold > prob_data[i].vel_max + 0.01){
-				LOG(WARNING) << "Velocity bounds not satisfied in y " << abs(prob_data[i].vy_init) << " " << prob_data[i].vel_max;
-                out_space = true;
-            }
-			if(std::floor(abs(prob_data[i].vz_init)/prob_data[i].thresold)*prob_data[i].thresold > prob_data[i].vel_max + 0.01){
-				LOG(WARNING) << "Velocity bounds not satisfied in z " << abs(prob_data[i].vz_init) << " " << prob_data[i].vel_max;
-                out_space = true;    
-            }
-			float acc_control = sqrt(pow(prob_data[i].ax_init,2) + pow(prob_data[i].ay_init,2) + pow(prob_data[i].gravity+prob_data[i].az_init,2));
-			if(std::floor(acc_control/prob_data[i].thresold/10)*prob_data[i].thresold*10 > prob_data[i].f_max + 0.01 || std::ceil(acc_control/prob_data[i].thresold/10)*prob_data[i].thresold*10 < prob_data[i].f_min - 0.01){
-                LOG(WARNING) << "Acceleration bounds not satisfied " << acc_control << " " << prob_data[i].f_min << " " << prob_data[i].f_max;
-                out_space = true;
-            }
-
-		}
-		else{
-			float acc_control = sqrt(pow(prob_data[i].ax_init,2) + pow(prob_data[i].ay_init,2) + pow(prob_data[i].gravity+prob_data[i].az_init,2));
-			float vel_control = sqrt(pow(prob_data[i].vx_init,2) + pow(prob_data[i].vy_init,2) + pow(prob_data[i].vz_init,2));
-			if(std::floor(vel_control/prob_data[i].thresold)*prob_data[i].thresold > prob_data[i].vel_max + 0.01 ){
-                out_space = true;
-				LOG(WARNING) << "Velocity bounds not satisfied " << vel_control << " " << prob_data[i].vel_max;
-			}
-			if(std::floor(acc_control/prob_data[i].thresold/10)*prob_data[i].thresold*10 > prob_data[i].f_max + 0.01  || std::ceil(acc_control/prob_data[i].thresold/10)*prob_data[i].thresold*10 < prob_data[i].f_min - 0.01){
-                out_space = true;
-				LOG(WARNING) << "Acceleration bounds not satisfied " << acc_control << " " << prob_data[i].f_min << " " << prob_data[i].f_max;
-            }
-		}
+        if(std::floor(abs(prob_data[i].vx_init)/prob_data[i].thresold)*prob_data[i].thresold > prob_data[i].vel_max + 0.01){
+            LOG(WARNING) << "Velocity bounds not satisfied in x " << abs(prob_data[i].vx_init) << " " << prob_data[i].vel_max;
+            out_space = true;
+        }
+        if(std::floor(abs(prob_data[i].vy_init)/prob_data[i].thresold)*prob_data[i].thresold > prob_data[i].vel_max + 0.01){
+            LOG(WARNING) << "Velocity bounds not satisfied in y " << abs(prob_data[i].vy_init) << " " << prob_data[i].vel_max;
+            out_space = true;
+        }
+        if(std::floor(abs(prob_data[i].vz_init)/prob_data[i].thresold)*prob_data[i].thresold > prob_data[i].vel_max + 0.01){
+            LOG(WARNING) << "Velocity bounds not satisfied in z " << abs(prob_data[i].vz_init) << " " << prob_data[i].vel_max;
+            out_space = true;    
+        }
+        // 加速度边界检查：
+        // 检查x轴上的加速度
+        // if(std::floor(abs(prob_data[i].ax_init)/prob_data[i].thresold)*prob_data[i].thresold > prob_data[i].acc_max + 0.01){
+        //     LOG(WARNING) << "Acceleration bounds not satisfied in x " << abs(prob_data[i].ax_init) << " " << prob_data[i].acc_max;
+        //     out_space = true;
+        // }
+        // // 检查y轴上的加速度
+        // if(std::floor(abs(prob_data[i].ay_init)/prob_data[i].thresold)*prob_data[i].thresold > prob_data[i].acc_max + 0.01){
+        //     LOG(WARNING) << "Acceleration bounds not satisfied in y " << abs(prob_data[i].ay_init) << " " << prob_data[i].acc_max;
+        //     out_space = true;
+        // }
+        // // 检查z轴上的加速度
+        // if(std::floor(abs(prob_data[i].az_init)/prob_data[i].thresold)*prob_data[i].thresold > prob_data[i].acc_max + 0.01){
+        //     LOG(WARNING) << "Acceleration bounds not satisfied in z " << abs(prob_data[i].az_init) << " " << prob_data[i].acc_max;
+        //     out_space = true;    
+        // }
     }
 }
 
 void Simulator :: runSimulation(){
-    
-    if(read_config){
-        if(params["axis_wise"].get<bool>()){
-            save_data.open(path+"/data/point_to_point/config_data/varying_agents/obs_" + std::to_string(num_obs) +"/results_am_ax"+folder_name.str()+"/sim_data_drone_" +std :: to_string(num_drone)+"_config_"+std :: to_string(config_num)+".txt");
-            save_data_2.open(path+"/data/point_to_point/config_data/varying_agents/obs_" + std::to_string(num_obs) +"/results_am_ax"+folder_name.str()+"/sim_residue_drone_" +std :: to_string(num_drone)+"_config_"+std :: to_string(config_num)+".txt");       
-            }
-        else{
-            save_data.open(path+"/data/point_to_point/config_data/varying_agents/obs_" + std::to_string(num_obs) +"/results_am_qd"+folder_name.str()+"/sim_data_drone_" +std :: to_string(num_drone)+"_config_"+std :: to_string(config_num)+".txt");
-            save_data_2.open(path+"/data/point_to_point/config_data/varying_agents/obs_" + std::to_string(num_obs) +"/results_am_qd"+folder_name.str()+"/sim_residue_drone_" +std :: to_string(num_drone)+"_config_"+std :: to_string(config_num)+".txt");
-        }
-    }
-    else{
-        save_data.open(path+"/data/sim_data.txt");
-        save_data_2.open(path+"/data/sim_data_upsampled_x.txt");
-        save_data_3.open(path+"/data/sim_data_upsampled_y.txt");
-        save_data_4.open(path+"/data/sim_data_upsampled_z.txt");
-    }
+    save_data.open(path+"/data/sim_data.txt");
+    save_data_2.open(path+"/data/sim_data_upsampled_x.txt");
+    save_data_3.open(path+"/data/sim_data_upsampled_y.txt");
+    save_data_4.open(path+"/data/sim_data_upsampled_z.txt");
+
     auto start = std :: chrono :: high_resolution_clock::now();            
     
     for(sim_iter = 0; sim_iter < max_time/dt; sim_iter++){
@@ -354,14 +278,6 @@ void Simulator :: runSimulation(){
         save_data_2 << temp_x_upsampled.transpose() << "\n" << temp_vx_upsampled.transpose() << "\n" << temp_ax_upsampled.transpose() << "\n"; 
         save_data_3 << temp_y_upsampled.transpose() << "\n" << temp_vy_upsampled.transpose() << "\n" << temp_ay_upsampled.transpose() << "\n";
         save_data_4 << temp_z_upsampled.transpose() << "\n" << temp_vz_upsampled.transpose() << "\n" << temp_az_upsampled.transpose() << "\n";
-
-        // for(int i = 0; i < num_drone; i++){
-        //     save_data_2 << prob_data[i].res_x_static_obs_norm << " " << prob_data[i].res_y_static_obs_norm 
-        //                 << " " << prob_data[i].res_x_drone_norm << " " << prob_data[i].res_y_drone_norm << " " << prob_data[i].res_z_drone_norm
-        //                 << " " << prob_data[i].res_x_vel_norm << " " << prob_data[i].res_y_vel_norm << " " << prob_data[i].res_z_vel_norm
-        //                 << " " << prob_data[i].res_x_acc_norm << " " << prob_data[i].res_y_acc_norm << " " << prob_data[i].res_z_acc_norm
-        //                 << " " << prob_data[i].res_x_ineq_norm << " " << prob_data[i].res_y_ineq_norm << " " << prob_data[i].res_z_ineq_norm << "\n";
-        // }
 
 
         if(VERBOSE == 2){
@@ -408,16 +324,7 @@ void Simulator :: calculateDistances(){
 void Simulator :: saveMetrics(){
     
     if(success && !collision_agent && !collision_obstacle){
-        
-
-        if(read_config){
-            if(prob_data[0].axis_wise)
-                save_data.open(path+"/data/point_to_point/config_data/varying_agents/obs_" + std::to_string(num_obs) +"/results_am_ax"+folder_name.str()+"/sim_results_drone_" +std :: to_string(num_drone)+"_config_"+std :: to_string(config_num)+".txt");
-            else
-                save_data.open(path+"/data/point_to_point/config_data/varying_agents/obs_" + std::to_string(num_obs) +"/results_am_qd"+folder_name.str()+"/sim_results_drone_" +std :: to_string(num_drone)+"_config_"+std :: to_string(config_num)+".txt");
-        }
-        else
-            save_data.open(path+"/data/sim_results.txt");
+        save_data.open(path+"/data/sim_results.txt");
         for(int i = 0; i < num_drone; i++){
             float smoothness = 0, arc_length = 0;
             for(int j = 0; j < prob_data[i].smoothness.size(); j++){

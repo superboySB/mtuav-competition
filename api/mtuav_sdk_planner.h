@@ -73,14 +73,15 @@ class SDK_EXPORT PlannerAgent {
   // 任务状态通知，每一秒一次，或者无人机、货物信息更新时也会调用
   // 此函数不能执行耗时很长的逻辑，建议次函数仅仅用于接受并保存无人机、货物的状态
   // 使用另外的线程，执行主要逻辑（计算航线等）
+  // task_id TaskInfo::task_id，用来标识任务
   // status 包含当前所有无人机的状态
   // cargos 包含当前任务所有货物的状态
-  virtual void OnTaskStatus(int task_index, std::vector<DroneStatus> status,
+  virtual void OnTaskStatus(int task_id, std::vector<DroneStatus> status,
                             std::map<int, CargoInfo> cargos) = 0;
 
   // 任务完成或者异常时调用
   // 注意，通过调用StopTask主动关闭的任务，此函数不会被调用
-  virtual void OnTaskDone(int task_index, bool done, float grade) = 0;
+  virtual void OnTaskDone(int task_id, bool done, float grade) = 0;
 
  private:
   class Internal;

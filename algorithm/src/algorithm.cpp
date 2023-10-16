@@ -54,6 +54,7 @@ int64_t myAlgorithm::solve() {
             cargoes_to_delivery.push_back(cargo);
         }
         // TODO 依据订单信息定制化特殊操作
+        // 太危险的订单是不是可以不接
     }
     LOG(INFO) << "cargo info size: " << this->_cargo_info.size()
               << ", cargo to delivery size: " << cargoes_to_delivery.size();
@@ -62,6 +63,9 @@ int64_t myAlgorithm::solve() {
     std::vector<DroneStatus> drones_without_cargo;
     std::vector<DroneStatus> drones_need_recharge;
     std::vector<DroneStatus> drones_to_delivery;
+    // 如果有需要空中悬停的无人机
+    std::vector<DroneStatus> drones_to_hover;
+
     for (auto& drone : this->_drone_info) {
         // drone status为READY时，表示无人机当前没有飞行计划
         LOG(INFO) << "drone status, id: " << drone.drone_id
@@ -71,7 +75,7 @@ int64_t myAlgorithm::solve() {
             LOG(INFO) << "c-id: " << c;
         }
         if (drone.battery < 50) {
-            drones_need_recharge.push_back(drone);
+            drones_need_recharge.push_back(drone);  // 注意充电
             continue;
         }
         // 无人机状态为READY
@@ -94,7 +98,7 @@ int64_t myAlgorithm::solve() {
                 drones_to_delivery.push_back(drone);
             }
             continue;
-        }
+        } 
         // TODO 参赛选手需要依据无人机信息定制化特殊操作
     }
     LOG(INFO) << "drone info size: " << this->_drone_info.size()
@@ -120,7 +124,7 @@ int64_t myAlgorithm::solve() {
         std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
     auto current = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
     int64_t current_time = current.count();
-    std::vector<std::tuple<std::string, FlightPlan>> flight_plans_to_publish;
+    std::vector<std::tuple<std::string, FlightPlan>> flight_plans_to_publish;  //下发飞行任务
 
     // 无人机与订单进行匹配，并生成飞行轨迹
     // 示例策略1：为没有订单的无人机生成取订单航线
@@ -140,11 +144,8 @@ int64_t myAlgorithm::solve() {
         // TODO 参赛选手需要自己实现一个轨迹生成函数或中转点生成函数（trajectory复杂/waypoint简单）
         auto [pickup_waypoints, pickup_flight_time] = this->trajectory_generation(
             the_drone.position, the_cargo.position, the_drone);  //暂时都使用轨迹生成函数，不使用中转点生成函数
-        // auto [pickup_waypoints, pickup_flight_time] = this->waypoints_generation(
-        //     the_drone.position, the_cargo.position);
         pickup.target_cargo_ids.push_back(the_cargo.id);
         pickup.flight_purpose = FlightPurpose::FLIGHT_TAKE_CARGOS;  // 飞行计划目标
-        // pickup.flight_plan_type = FlightPlanType::PLAN_WAY_POINTS;  // 飞行计划类型：中转点
         pickup.flight_plan_type = FlightPlanType::PLAN_TRAJECTORIES;  // 飞行计划类型：轨迹
         pickup.flight_id = std::to_string(++Algorithm::flightplan_num);
         pickup.takeoff_timestamp = current_time;  // 立刻起飞
@@ -162,10 +163,46 @@ int64_t myAlgorithm::solve() {
                   << ", flight type: " << int(pickup.flight_plan_type)
                   << ", cargo id: " << the_cargo.id;
 
-        break;  // 每次只生成一条取货飞行计划
+        // break;  // 每次只生成一条取货飞行计划
     }
 
-    // 示例策略2：为电量小于指定数值的无人机生成换电航线
+    // 示例策略2：为已经取货的飞机生成送货飞行计划
+    for (auto the_drone : drones_to_delivery) {
+        int the_cargo_id = 0;
+        // 找到货仓中第一个id不为-1的货物
+        for (auto cid : the_drone.delivering_cargo_ids) {
+            if (cid != -1) {
+                the_cargo_id = cid;
+                break;
+            }
+        }
+        if (this->_cargo_info.find(the_cargo_id) != this->_cargo_info.end()) {
+            auto the_cargo = this->_cargo_info.at(the_cargo_id);
+            FlightPlan delivery;
+            auto [delivery_traj, delivery_flight_time] = this->trajectory_generation(
+                the_drone.position, the_cargo.target_position, the_drone);
+            if (delivery_flight_time == -1) {
+                // 轨迹生成失败
+                LOG(INFO) << "trajectory generation failed. ";
+                break;
+            }
+            delivery.flight_purpose = FlightPurpose::FLIGHT_DELIVER_CARGOS;
+            delivery.flight_plan_type = FlightPlanType::PLAN_TRAJECTORIES;
+            delivery.flight_id = std::to_string(++Algorithm::flightplan_num);
+            delivery.takeoff_timestamp = current_time;
+            delivery.segments = delivery_traj;
+            delivery.target_cargo_ids.push_back(the_cargo.id);
+            flight_plans_to_publish.push_back({the_drone.drone_id, delivery});
+            LOG(INFO) << "Successfully generated flight plan, flight id: " << delivery.flight_id
+                      << ", drone id: " << the_drone.drone_id
+                      << ", flight purpose: " << int(delivery.flight_purpose)
+                      << ", flight type: " << int(delivery.flight_plan_type)
+                      << ", cargo id: " << the_cargo.id;
+            // break;  // 每次只生成一条送货飞行计划
+        }
+    }
+
+    // 示例策略3：为电量小于指定数值的无人机生成换电航线
     for (auto the_drone : drones_need_recharge) {
         auto battery_stations = this->_task_info->battery_stations;
         // 没有换电站，无法执行换电操作
@@ -209,43 +246,7 @@ int64_t myAlgorithm::solve() {
                   << ", drone id: " << the_drone.drone_id
                   << ", flight purpose: " << int(recharge.flight_purpose)
                   << ", flight type: " << int(recharge.flight_plan_type) << ", cargo id: none";
-        break;  // 每次只生成一条换电飞行计划
-    }
-
-    // 示例策略3：为已经取货的飞机生成送货飞行计划
-    for (auto the_drone : drones_to_delivery) {
-        int the_cargo_id = 0;
-        // 找到货仓中第一个id不为-1的货物
-        for (auto cid : the_drone.delivering_cargo_ids) {
-            if (cid != -1) {
-                the_cargo_id = cid;
-                break;
-            }
-        }
-        if (this->_cargo_info.find(the_cargo_id) != this->_cargo_info.end()) {
-            auto the_cargo = this->_cargo_info.at(the_cargo_id);
-            FlightPlan delivery;
-            auto [delivery_traj, delivery_flight_time] = this->trajectory_generation(
-                the_drone.position, the_cargo.target_position, the_drone);
-            if (delivery_flight_time == -1) {
-                // 轨迹生成失败
-                LOG(INFO) << "trajectory generation failed. ";
-                break;
-            }
-            delivery.flight_purpose = FlightPurpose::FLIGHT_DELIVER_CARGOS;
-            delivery.flight_plan_type = FlightPlanType::PLAN_TRAJECTORIES;
-            delivery.flight_id = std::to_string(++Algorithm::flightplan_num);
-            delivery.takeoff_timestamp = current_time;
-            delivery.segments = delivery_traj;
-            delivery.target_cargo_ids.push_back(the_cargo.id);
-            flight_plans_to_publish.push_back({the_drone.drone_id, delivery});
-            LOG(INFO) << "Successfully generated flight plan, flight id: " << delivery.flight_id
-                      << ", drone id: " << the_drone.drone_id
-                      << ", flight purpose: " << int(delivery.flight_purpose)
-                      << ", flight type: " << int(delivery.flight_plan_type)
-                      << ", cargo id: " << the_cargo.id;
-            break;  // 每次只生成一条送货飞行计划
-        }
+        // break;  // 每次只生成一条换电飞行计划
     }
 
     // 下发所求出的飞行计划
@@ -256,65 +257,21 @@ int64_t myAlgorithm::solve() {
                   << ", msg: " << publish_result.msg;
     }
 
-    // 如果有需要空中悬停的无人机
-    std::vector<DroneStatus> drones_to_hover;
     // TODO 找出需要悬停的无人机
     // 下发无人机悬停指令
-    for (auto& drone : drones_to_hover) {
-        this->_planner->DroneHover(drone.drone_id);
-        LOG(INFO) << "Send dorne hover commend, drone id: " << drone.drone_id;
-    }
+    // for (auto& drone : drones_to_hover) {
+    //     this->_planner->DroneHover(drone.drone_id);
+    //     LOG(INFO) << "Send dorne hover commend, drone id: " << drone.drone_id;
+    // }
 
     // 根据算法计算情况，得出下一轮的算法调用间隔，单位ms
-    int64_t sleep_time_ms = 20000;
+    int64_t sleep_time_ms = 2000;
     // TODO 依据需求计算所需的sleep time
     // sleep_time_ms = Calculate_sleep_time();
     return sleep_time_ms;
 }
 
-// waypoints_generation(简单，无额外奖励) 和 trajectory_generation(复杂，有额外奖励) 二选一即可
-std::tuple<std::vector<Segment>, int64_t> myAlgorithm::waypoints_generation(Vec3 start, Vec3 end) {
-    // TODO 参赛选手需要自行设计算法，生成对应的waypoint
-    std::vector<Segment> waypoints;
-    // 获取地图信息
-    // this->_map; 调用打印
-
-    // 定义4个轨迹点
-    Segment p1, p2;  // p1 起点， p2, 起点上方高度120米
-    p1.position = start;
-    Vec3 p2_pos;
-    p2_pos.x = start.x;
-    p2_pos.y = start.y;
-    p2_pos.z = 120;
-    p2.position = p2_pos;
-    p1.time_ms = 0;      // 第一个点的时间设置为0
-    p2.time_ms = 25000;  // 起飞25秒
-    p1.seg_type = 0;
-    p2.seg_type = 0;
-    Segment p3, p4;  // p3 终点上方高度120米，p4 终点
-    Vec3 p3_pos;
-    p3_pos.x = end.x;
-    p3_pos.y = end.y;
-    p3_pos.z = 120;
-    p3.position = p3_pos;
-    p3.time_ms = 145000;  // 起飞时长+ 平飞时长
-    p3.seg_type = 1;
-    p4.position = end;
-    p4.time_ms = 170000;  // 起飞时长+ 平飞时长 + 降落时长
-    p4.seg_type = 2;
-
-    // 轨迹点存入trajectory中
-    // waypoints.push_back(p1);
-    waypoints.push_back(p2);
-    waypoints.push_back(p3);
-    waypoints.push_back(p4);
-
-    // 计算总时间
-    int64_t flight_time = (35000 + 200000 + 35000);  // 单位毫秒；
-    return {waypoints, flight_time};
-}
-
-// waypoints_generation(简单，无额外奖励) 和 trajectory_generation(复杂，有额外奖励) 二选一即可
+// trajectory_generation(复杂，有额外奖励)
 std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec3 start, Vec3 end,
                                                                              DroneStatus drone) {
     std::vector<Segment> traj_segs;
@@ -354,8 +311,7 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
 
     // 生成p1->p2段轨迹点
     std::vector<mtuav::Segment> p1top2_segs;
-    bool success_1 =
-        tg.generate_traj_from_waypoints({p1.position, p2.position}, dl, 0, p1top2_segs);
+    bool success_1 = tg.generate_traj_from_waypoints({p1.position, p2.position}, dl, 0, p1top2_segs);
     LOG(INFO) << "p1top2 traj gen: " << std::boolalpha << success_1;
     if (success_1 == false) {
         return {std::vector<mtuav::Segment>{}, -1};
@@ -363,18 +319,15 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
     int64_t p1top2_flight_time = p1top2_segs.back().time_ms;  // p1->p2飞行时间
     // 生成p2->p3段轨迹点
     std::vector<mtuav::Segment> p2top3_segs;
-    bool success_2 =
-        tg.generate_traj_from_waypoints({p2.position, p3.position}, dl, 1, p2top3_segs);
+    bool success_2 = tg.generate_traj_from_waypoints({p2.position, p3.position}, dl, 1, p2top3_segs);
     LOG(INFO) << "p2top3 traj gen: " << std::boolalpha << success_2;
     if (success_2 == false) {
         return {std::vector<mtuav::Segment>{}, -1};
     }
     int64_t p2top3_flight_time = p2top3_segs.back().time_ms;  // p2->p3飞行时间
-
     // 生成p3->p4段轨迹点
     std::vector<mtuav::Segment> p3top4_segs;
-    bool success_3 =
-        tg.generate_traj_from_waypoints({p3.position, p4.position}, dl, 2, p3top4_segs);
+    bool success_3 = tg.generate_traj_from_waypoints({p3.position, p4.position}, dl, 2, p3top4_segs);
     LOG(INFO) << "p3top4 traj gen: " << std::boolalpha << success_3;
     if (success_3 == false) {
         return {std::vector<mtuav::Segment>{}, -1};
@@ -392,7 +345,6 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
     for (int i = 0; i < p2top3_segs.size(); i++) {
         p2top3_segs[i].time_ms = p2top3_segs[i].time_ms + p1top2_last_time;
     }
-
     // 处理p3->p4段轨 更新轨迹点时间
     int64_t p2top3_last_time = p2top3_segs.back().time_ms;
     LOG(INFO) << "p2top3_last_time " << p2top3_last_time;
@@ -416,16 +368,6 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
                   << ", time_ms: " << s.time_ms << ", a: " << s.a.x << " " << s.a.y << " " << s.a.z
                   << ", v: " << s.v.x << " " << s.v.y << " " << s.v.z << ", type: " << s.seg_type;
     }
-
-    // for (size_t i = 1; i < p1top4_segs.size(); ++i)
-    // {
-    //     DroneLimits dl2 = this->_task_info->drones.front().drone_limits;
-    //     LOG(INFO) << "begin check " << std::endl;
-    //     if (!segment_feasible_check(&p1top4_segs[i-1], &p1top4_segs[i], dl2.max_fly_speed_h,
-    //     dl2.max_fly_speed_v, dl2.max_fly_acc_h, dl2.max_fly_acc_v)){
-    //         LOG(INFO) << "\n\n check fail\n" ;
-    //     }
-    // }
 
     // 计算p1->p4时间
     int64_t p1top4_flight_time = p1top2_flight_time + p2top3_flight_time + p3top4_flight_time;

@@ -55,7 +55,7 @@ enum CargoStatus {
   CARGO_WAITING = 1,  // 不取外卖会一直存在，奖励持续变低，惩罚持续增加
   CARGO_DELIVERING = 2,
   CARGO_DELIVERED = 3,
-  CARGO_FAILED = 4,  // 飞机炸机后，带的货物
+  CARGO_FAILED = 4,  // 飞机炸机后，带的货物就炸了
 };
 
 typedef struct CargoInfo {
@@ -182,6 +182,7 @@ enum DroneCrashType {
   DRONE_CRASH_LOW_BATTERY = 1,
   DRONE_CRASH_COLLIDE_OBSTACLE = 2,
   DRONE_CRASH_COLLIDE_DRONE = 3,
+  DRONE_CRASH_LANDED_ON_ILLEGAL_POSITION = 4,
 };
 
 typedef struct DroneStatus {

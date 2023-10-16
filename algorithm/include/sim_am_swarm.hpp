@@ -7,7 +7,7 @@
 class Simulator{
     public:
         bool success;
-        Simulator(int cf_num, bool read_cf, int num_drones, bool use_model, std::vector<float> noise);
+        Simulator();
         void runSimulation();
         void saveMetrics();
     private:

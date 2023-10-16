@@ -2626,4 +2626,3 @@ namespace Optim
 		return j;
 	}
 }
-
