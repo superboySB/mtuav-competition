@@ -26,16 +26,16 @@ int main() {
               << "z[" << min_z << ", " << max_z << "]";
 
     // 查询并打印所有位置的体素信息
-    for (float x = min_x; x <= max_x; x += 10) {
-        for (float y = min_y; y <= max_y; y += 10) {
-            for (float z = min_z; z <= max_z; z += 10) {
-                const mtuav::Voxel* voxel = map->Query(x, y, z);
-                if (voxel != nullptr) {
-                    LOG(INFO) << "Voxel at (" << x << ", " << y << ", " << z << "): "
-                              << "Distance: " << voxel->distance
-                              << ", Semantic: " << static_cast<int>(voxel->semantic);
-                }
+    for (float x = min_x+6; x <= max_x; x += 12) {
+        for (float y = min_y+6; y <= max_y; y += 12) {
+            float z=70;
+            const mtuav::Voxel* voxel = map->Query(x, y, z);
+            if (voxel != nullptr) {
+                LOG(INFO) << "Voxel at (" << x << ", " << y << ", " << z << "): "
+                            << "Distance: " << voxel->distance
+                            << ", Semantic: " << static_cast<int>(voxel->semantic);
             }
+            
         }
     }
 

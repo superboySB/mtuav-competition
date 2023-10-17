@@ -3,10 +3,6 @@
 
 # 运行流程
 ## 准备
-开始比赛前检查下主机的时区设置，要求为Beijing时间（UTC+8）；同时做一次时间同步
-```sh
-sudo ntpdate -b -p 5 -u cn.ntp.org.cn
-```
 下拉美团提供的可视化docker镜像：
 ```sh
 docker pull marcobright2023/mtuav-competition:standalone
@@ -63,6 +59,10 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/workspace/mtuav-competition/libs/ && ./
 
 
 ### [在线测试]：连接在线比赛系统
+**注意**！！开始比赛前检查下主机的时区设置，要求为Beijing时间（UTC+8）；同时做一次时间同步，并且保证core dump没有问题，最好通过修改配置文件来允许生成core（[教程1](https://juejin.cn/post/7068889888527450125)）
+```sh
+ntpdate -b -p 5 -u cn.ntp.org.cn && ulimit -c unlimited
+```
 在算法镜像内，**每次下拉更新代码、需要重新运行算法时**，确保源代码中`planner.h`和`sdk_test_main.cpp`中相应的`Planner`和`Login`方法以及`map地址`配置正确，然后直接编译源码运行SDK
 ```sh
 # 编译
@@ -72,3 +72,15 @@ mkdir -p build && cd build && cmake -DCMAKE_BUILD_TYPE=Release .. && make
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/workspace/mtuav-competition/libs/ &&  ./mtuav_sdk_example
 ```
 不同于单机镜像，在线⽐赛系统地图尺寸更大、任务时间更久，且**没有可视化窗⼝**，⻜机状态只能通过代码来判断，规划时，要给⻜机电量留余量，极限规划可能引发坠机（电量<1%时随机坠机）。建议：先使⽤单机镜像调试代码（地图和场景相对简单），然后连接在线系统进⾏测试。强⼤的算⼒对算法会有些帮助，但不是决定性的。充分利⽤已知信息，提前最好预计算；充分利⽤多核计算能⼒；任何时候都优先考虑⻜⾏安全。
+
+
+## Useful Tips
+```sh
+bash -c 'echo core-%e > /proc/sys/kernel/core_pattern' && ulimit -c unlimited
+
+sysctl kernel.core_pattern
+
+ulimit -a | grep core
+
+valgrind --leak-check=full ./mtuav_sdk_example 2> valgrind_output.txt
+```

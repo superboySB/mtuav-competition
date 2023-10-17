@@ -66,24 +66,17 @@ int64_t myAlgorithm::solve() {
     // 如果有需要空中悬停的无人机
     std::vector<DroneStatus> drones_to_hover;
 
-    // 1017：先做空中保留随机一架飞机跑通全流程
-    bool everyone_ready = true;
     for (auto& drone : this->_drone_info) {
-        if (drone.status != Status::READY) {
-            everyone_ready = false;
-        }
-    }
-
-    for (auto& drone : this->_drone_info) {
-        // if (drone.drone_id != "drone-001") continue;  // 1016：先做一架飞机跑通全流程（grade：-1131.500000）
-        if (everyone_ready == false) continue; // 1017：先做空中保留随机一架飞机跑通全流程
-
         // drone status为READY时，表示无人机当前没有飞行计划
         LOG(INFO) << "drone status, id: " << drone.drone_id
                   << ", drone status: " << int(drone.status);
         LOG(INFO) << "cargo info:";
         for (auto c : drone.delivering_cargo_ids) {
             LOG(INFO) << "c-id: " << c;
+        }
+        if (drone.battery < 50) {
+            drones_need_recharge.push_back(drone);  // 注意充电
+            continue;
         }
         // 无人机状态为READY
         if (drone.status == Status::READY) {
@@ -97,19 +90,14 @@ int64_t myAlgorithm::solve() {
                 }
             }
 
-            if (has_cargo == false) {  // 货仓中无cargo
-                if (drone.battery < 50) {
-                    drones_need_recharge.push_back(drone);  // 注意充电
-                }
-                else{
-                    drones_without_cargo.push_back(drone);
-                }    
-            } 
-            else {  // 货仓中有cargo
+            if (has_cargo == false) {
+                // 货仓中无cargo
+                drones_without_cargo.push_back(drone);
+            } else {
+                // 货仓中有cargo
                 drones_to_delivery.push_back(drone);
             }
-            // continue;
-            break;  // 1017：先做空中保留随机一架飞机跑通全流程
+            continue;
         } 
         // TODO 参赛选手需要依据无人机信息定制化特殊操作
     }
@@ -253,12 +241,7 @@ int64_t myAlgorithm::solve() {
         recharge.takeoff_timestamp = current_time;  // 立刻起飞
         recharge.segments = recharege_traj;
         flight_plans_to_publish.push_back({the_drone.drone_id, recharge});
-        // LOG(INFO) << "first point z: " << recharege_traj.front().position.z;  
-        if (!recharege_traj.empty()) {
-            LOG(INFO) << "first point z: " << recharege_traj.front().position.z;
-        } else {
-            LOG(WARNING) << "recharege_traj is empty!";
-        }
+        LOG(INFO) << "first point z: " << recharege_traj.front().position.z;
         LOG(INFO) << "Successfully generated flight plan, flight id: " << recharge.flight_id
                   << ", drone id: " << the_drone.drone_id
                   << ", flight purpose: " << int(recharge.flight_purpose)
@@ -282,7 +265,7 @@ int64_t myAlgorithm::solve() {
     // }
 
     // 根据算法计算情况，得出下一轮的算法调用间隔，单位ms
-    int64_t sleep_time_ms = 1000;
+    int64_t sleep_time_ms = 2000;
     // TODO 依据需求计算所需的sleep time
     // sleep_time_ms = Calculate_sleep_time();
     return sleep_time_ms;
@@ -379,12 +362,12 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
     p1top4_segs.insert(p1top4_segs.end(), p2top3_segs.begin(), p2top3_segs.end());
     p1top4_segs.insert(p1top4_segs.end(), p3top4_segs.begin(), p3top4_segs.end());
 
-    // LOG(INFO) << "combined segs detail: ";
-    // for (auto s : p1top4_segs) {
-    //     LOG(INFO) << "seg, p: " << s.position.x << " " << s.position.y << " " << s.position.z
-    //               << ", time_ms: " << s.time_ms << ", a: " << s.a.x << " " << s.a.y << " " << s.a.z
-    //               << ", v: " << s.v.x << " " << s.v.y << " " << s.v.z << ", type: " << s.seg_type;
-    // }
+    LOG(INFO) << "combined segs detail: ";
+    for (auto s : p1top4_segs) {
+        LOG(INFO) << "seg, p: " << s.position.x << " " << s.position.y << " " << s.position.z
+                  << ", time_ms: " << s.time_ms << ", a: " << s.a.x << " " << s.a.y << " " << s.a.z
+                  << ", v: " << s.v.x << " " << s.v.y << " " << s.v.z << ", type: " << s.seg_type;
+    }
 
     // 计算p1->p4时间
     int64_t p1top4_flight_time = p1top2_flight_time + p2top3_flight_time + p3top4_flight_time;

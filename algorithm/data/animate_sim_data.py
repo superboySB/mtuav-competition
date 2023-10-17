@@ -147,17 +147,6 @@ for i in range(sim_steps):
                     print(val)
             
     stats = ax.text(0.2, y_lim[1]+0.2, z_lim[1]+0.2,'Obstacle Collision Count = {obs}\nInter-Agent Collision Count = {col}\nAgents = {n}\nSim-Step = {step}'.format(obs=collision_count_obs, col=collision_count_agent, n=num_drone, step=i)) 
-    
-    
-    # for k in range(0, num_drone):
-    #     acc_x = x_data[k, 3]
-    #     acc_y = y_data[k, 3]
-    #     acc_z = z_data[k, 3]
-        
-    #     ax2.grid()
-    #     ax2.scatter(i, np.sqrt(acc_x**2 + acc_y**2 + (acc_z+9.8)**2)/9.8, color=colors[k]) 
-    #     ax2.plot(i, 1.5)
-    #     ax2.plot(i, 0.3)
         
 
     plt.draw()

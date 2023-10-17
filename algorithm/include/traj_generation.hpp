@@ -161,7 +161,7 @@ class TrajectoryGeneration {
 
         return true;
     }
-
+    // 一维直接还原回三维
     mtuav::Vec3 get_3d_from_1d(const mtuav::Vec3& previous, const mtuav::Vec3& current,
                                double delta) {
         double delta_p_x = current.x - previous.x;
@@ -175,7 +175,7 @@ class TrajectoryGeneration {
         point.z = delta_p_z / p * delta;
         return point;
     }
-
+    // 计算斜线的一维轨迹
     WaypointAccInfo generate_traj_1d(double p, double max_v, double max_a) {
         WaypointAccInfo hor_info;
 

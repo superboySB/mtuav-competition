@@ -1,23 +1,21 @@
 {
     "@@ Debugging Options": "note",
     "verbose": 0,
-    "num_drone": 15,
+    "num_drone": 10,
     "num_obs": 16,
 
     "@@ For axis_wise set true otherwise quadratic": "note",
-    "axis_wise": false,
     "jerk_snap_constraints": true,
 
     "@@ CBF": "",
     "gamma": 1.0,
 
     "@@ Planning Parameters": "note",
-    "world": 3,
+    "world": 2,
     "num": 30,
     "t_plan": 3,
     "num_up": 300,
     "dist_stop": 0.2,
-    "free_space": false,
     "kappa": 5,
 
     "@@ Optimizer Parameters": "note",
@@ -47,12 +45,6 @@
     "vel_max": 1.5,
     "jerk_max": 8.0,
     "snap_max": 8.0,
-
-    "scaled thrust values": "note",
-    "use_thrust_values": true,
-    "gravity": 9.8,
-    "f_max": 1.5,
-    "f_min": 0.3,
     "acc_max": 2.8,
     "prox_agent": 0.2,
     "prox_obs": 0.2,
@@ -115,12 +107,7 @@
         [-1.071, -0.097, 0.5],
         [0.68, -1.826, 0.5],
         [-1.819, 0.55, 0.5],
-        [-1.787, -0.065, 0.5],
-        [1.727, 0.434, 1.5],
-        [-1.071, -0.097, 1.5],
-        [0.68, -1.826, 1.5],
-        [-1.819, 0.55, 1.5],
-        [-1.787, -0.065, 1.5]
+        [-1.787, -0.065, 0.5]
     ],
     "goal_drone": [
         [-1.787, -0.065, 0.5],
@@ -132,11 +119,6 @@
         [0.68, -1.826, 0.5],
         [0.307, 1.834, 0.5],
         [-1.819, 0.55, 0.5],
-        [-1.071, -0.097, 0.5],
-        [1.748, 1.77, 1.5],
-        [0.68, -1.826, 1.5],
-        [0.307, 1.834, 1.5],
-        [-1.819, 0.55, 1.5],
-        [-1.071, -0.097, 1.5]
+        [-1.071, -0.097, 0.5]
     ]
 }
