@@ -76,6 +76,7 @@ export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/workspace/mtuav-competition/libs/ &&  .
 
 ## Useful Tips
 ```sh
+# 解决core dump
 bash -c 'echo core-%e > /proc/sys/kernel/core_pattern' && ulimit -c unlimited
 
 sysctl kernel.core_pattern
@@ -83,4 +84,8 @@ sysctl kernel.core_pattern
 ulimit -a | grep core
 
 valgrind --leak-check=full ./mtuav_sdk_example 2> valgrind_output.txt
+
+
+# SIPP
+./path_finding  ../params/task_example.xml  ../params/map_example.xml  ../params/config_example.xml  ../params/obstacles_example.xml 
 ```

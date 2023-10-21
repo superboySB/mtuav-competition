@@ -135,7 +135,7 @@ class TrajectoryGeneration {
         }
 
         std::cout << "Input p " << p << " max_v " << max_v << " max_a " << max_a << std::endl;
-        WaypointAccInfo hor_info = generate_traj_1d(p, max_v, max_a);
+        WaypointAccInfo hor_info = generate_traj_1d(p, max_v-1e-6, max_a-1e-6);  // 浮点数误差
 
         segments.clear();
         mtuav::Segment single_segment;
