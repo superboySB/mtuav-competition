@@ -38,11 +38,14 @@
           }
       },
       {
-        "name": "debug am",
+        "name": "debug sipp",
         "type": "cppdbg",
         "request": "launch",
-        "program": "${workspaceFolder}/build/test_am",
-        "args": [],
+        "program": "${workspaceFolder}/build/path_finding",
+        "args": ["/workspace/mtuav-competition/params/task_example.xml", 
+                 "/workspace/mtuav-competition/params/map_example.xml", 
+                 "/workspace/mtuav-competition/params/config_example.xml", 
+                 "/workspace/mtuav-competition/params/obstacles_example.xml"],
         "stopAtEntry": false,
         "cwd": "${workspaceFolder}",
         "environment": [

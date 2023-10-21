@@ -17,6 +17,8 @@ find_package(nlohmann_json)
 
 # 添加include路径
 include_directories(algorithm/include/)
+include_directories(path_finding/include/)
+include_directories(/usr/local/include/ortools/)
 include_directories(api/)
 link_directories(libs/)
 
@@ -36,7 +38,6 @@ target_link_libraries(mtuav_sdk_example mtuav_sdk -lpthread -lglog)
 # target_link_libraries(test_map ${DIR_SKD_LIBS} -lglog)
 
 # 添加SIPP的单独测试路径
-include_directories(path_finding/include/)
 set(SIPP_SRC
     path_finding/src/main.cpp  
     path_finding/src/tinyxml2.cpp
@@ -53,7 +54,6 @@ target_link_libraries(path_finding -lpthread -lglog)
 
 
 # 添加ortools的单独测试路径
-include_directories(/usr/local/include/ortools/)
 set(TEST_ORTOOLS_SRC tests/test_ortools.cpp)
 add_executable(test_ortools ${TEST_ORTOOLS_SRC})
 target_link_libraries(test_ortools ortools -lpthread -lglog)
