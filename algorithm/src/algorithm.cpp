@@ -3,6 +3,7 @@
 #include "algorithm.h"  // 选手自行设计的算法头文件
 #include "math.h"
 
+
 namespace mtuav::algorithm {
 // 算法基类Algorithm函数实现
 
@@ -43,6 +44,141 @@ void Algorithm::set_planner(std::shared_ptr<Planner> input_planner) {
     this->_planner = input_planner;
 }
 
+// 1023:自己维护一个恶心心的状态机
+// void myAlgorithm::update_my_task_info(DroneStatus drone) {}
+
+// void myAlgorithm::update_my_map_info(DroneStatus drone) {}
+
+double distance_2D(Vec3 A, Vec3 B) {
+    return std::sqrt(std::pow(B.x - A.x, 2) + std::pow(B.y - A.y, 2));
+}
+
+double distance_3D(Vec3 A, Vec3 B) {
+    return std::sqrt(std::pow(B.x - A.x, 2) + std::pow(B.y - A.y, 2) + std::pow(B.z - A.z, 2));
+}
+
+int estimate_total_time(const std::vector<CargoInfo>& selected_cargoes, 
+                        const Vec3& initial_drone_position, 
+                        int initial_time, 
+                        int takeoff_time, 
+                        int landing_time, 
+                        double exp_speed) {
+    int total_time = initial_time;
+    Vec3 current_position = initial_drone_position;
+
+    for (const auto& cargo : selected_cargoes) {
+        // 计算到货物位置所需的时间
+        int time_to_cargo = static_cast<int>( distance_2D(current_position,cargo.position) / exp_speed) 
+                                + takeoff_time + landing_time;
+
+        // 计算到目标位置所需的时间
+        int time_to_target = static_cast<int>( distance_2D(cargo.position,cargo.target_position) / exp_speed) 
+                                + takeoff_time + landing_time;
+
+        // 更新总时间和当前位置
+        total_time += time_to_cargo + time_to_target;
+        current_position = cargo.target_position;
+
+        // 检查时间限制
+        if (total_time > cargo.latest_seconds_left) {
+            return -1;  // 表示有一个订单不能在时间内完成
+        }
+    }
+
+    return total_time;
+}
+
+// 使用该估算函数来确定是否接受新的订单。这样可以确保所有选中的订单都能在规定的时间内完成。
+// 这里所有的时间单位暂时都用秒叭，速度用m/s
+std::vector<CargoInfo> selectAndOrderCargoes( 
+        const std::vector<CargoInfo>& available_cargoes,
+        const Vec3& drone_position,
+        double max_weight,
+        int max_orders,
+        double exp_speed,
+        int takeoff_time,
+        int landing_time,
+        int current_time) {
+
+    std::vector<CargoInfo> selected_cargoes;
+    double current_weight = 0.0;
+    Vec3 current_position = drone_position;
+    auto remaining_cargoes = available_cargoes;  // 创建一个副本以便我们可以修改它
+
+    while (!remaining_cargoes.empty() && selected_cargoes.size() < max_orders) {
+        auto best_cargo_it = std::min_element(remaining_cargoes.begin(), remaining_cargoes.end(),
+            [current_position, &current_weight, &current_time, max_weight, exp_speed, takeoff_time, landing_time](const CargoInfo& a, const CargoInfo& b) {
+                // 计算到各货物的时间和距离
+                int time_to_a = static_cast<int>( distance_2D(current_position,a.position) / exp_speed) + takeoff_time + landing_time
+                             + static_cast<int>( distance_2D(a.position,a.target_position) / exp_speed) + takeoff_time + landing_time;
+                int time_to_b = static_cast<int>( distance_2D(current_position,b.position) / exp_speed) + takeoff_time + landing_time
+                             + static_cast<int>( distance_2D(b.position,b.target_position) / exp_speed) + takeoff_time + landing_time;
+
+                // 计算是否能在限定时间内完成交付
+                bool can_deliver_a = (current_time + time_to_a <= a.latest_seconds_left);
+                bool can_deliver_b = (current_time + time_to_b <= b.latest_seconds_left);
+
+                // 计算是否超过重量限制
+                bool over_weight_a = (current_weight + a.weight > max_weight);
+                bool over_weight_b = (current_weight + b.weight > max_weight);
+
+                // 综合考虑
+                if (!can_deliver_a && can_deliver_b) return true;
+                if (can_deliver_a && !can_deliver_b) return false;
+                if (over_weight_a && !over_weight_b) return true;
+                if (!over_weight_a && over_weight_b) return false;
+
+                // 如果其他所有条件都相等，则比较奖励与时间的比率
+                if ((a.award / time_to_a) != (b.award / time_to_b)) {
+                    return (a.award / time_to_a) < (b.award / time_to_b);
+                }
+
+                // 在所有其他条件都不能用来决定 "最佳" 订单时，使用 id 来比较
+                return a.id < b.id;
+            });
+
+        // 尝试添加这个新订单，看看是否所有订单都能在规定时间内完成
+        std::vector<CargoInfo> temp_selected_cargoes = selected_cargoes;
+        temp_selected_cargoes.push_back(*best_cargo_it);
+        
+        int estimated_time = estimate_total_time(temp_selected_cargoes, current_position, current_time,
+                                                 takeoff_time, landing_time, exp_speed);
+
+        // 如果所有订单都能在规定时间内完成，那么正式添加这个新订单
+        if (estimated_time != -1) {
+            selected_cargoes.push_back(*best_cargo_it);
+            current_weight += best_cargo_it->weight;
+            current_position = best_cargo_it->target_position;
+            current_time = estimated_time;  // 更新当前时间
+        }
+
+        // 从剩余货物列表中删除
+        remaining_cargoes.erase(best_cargo_it);
+    }
+
+    // 此时，selected_cargoes 包含的都是能在规定时间内完成的订单
+    return selected_cargoes;
+}
+
+bool areAllElementsMinusOne(const std::vector<int>& vec) {
+    return std::all_of(vec.begin(), vec.end(), [](int x) { return x == -1; });
+}
+
+void removeAcceptedCargoes(std::vector<CargoInfo>& cargoes_to_delivery_and_no_accepted, 
+                            const std::vector<int>& unfinished_order) {
+    // 删除所有id出现在unfinished_order中的元素
+    cargoes_to_delivery_and_no_accepted.erase(
+        std::remove_if(
+            cargoes_to_delivery_and_no_accepted.begin(), 
+            cargoes_to_delivery_and_no_accepted.end(),
+            [&unfinished_order](const CargoInfo& cargo) {
+                return std::find(unfinished_order.begin(), unfinished_order.end(), cargo.id) != unfinished_order.end();
+            }
+        ),
+        cargoes_to_delivery_and_no_accepted.end()
+    );
+}
+
 // TODO 需要参赛选手自行设计求解算法
 // TODO 下面给出一个简化版示例，用于说明无人机飞行任务下发方式
 int64_t myAlgorithm::solve() {
@@ -60,23 +196,20 @@ int64_t myAlgorithm::solve() {
               << ", cargo to delivery size: " << cargoes_to_delivery.size();
 
     // 处理无人机信息，找出当前未装载货物的无人机集合
-    std::vector<DroneStatus> drones_without_cargo;
+    std::vector<DroneStatus> drones_to_pick;
     std::vector<DroneStatus> drones_need_recharge;
     std::vector<DroneStatus> drones_to_delivery;
     // 如果有需要空中悬停的无人机
     std::vector<DroneStatus> drones_to_hover;
 
-    // 1017：先做空中保留随机一架飞机跑通全流程
-    bool everyone_ready = true;
+    
     for (auto& drone : this->_drone_info) {
-        if (drone.status != Status::READY) {
-            everyone_ready = false;
+        // if (drone.drone_id != "drone-006") continue;  // 1016：先做一架飞机跑通全流程（grade：-1131.500000）
+        // 先规划6架飞机，每一架都间距10米
+        if (my_drone_info.find(drone.drone_id) == my_drone_info.end()){
+            LOG(INFO) << "Now we do not use: " << drone.drone_id;
+            continue;
         }
-    }
-
-    for (auto& drone : this->_drone_info) {
-        // if (drone.drone_id != "drone-001") continue;  // 1016：先做一架飞机跑通全流程（grade：-1131.500000）
-        if (everyone_ready == false) continue; // 1017：先做空中保留随机一架飞机跑通全流程
 
         // drone status为READY时，表示无人机当前没有飞行计划
         LOG(INFO) << "drone status, id: " << drone.drone_id
@@ -97,28 +230,71 @@ int64_t myAlgorithm::solve() {
                 }
             }
 
-            if (has_cargo == false) {  // 货仓中无cargo
+            if (areAllElementsMinusOne(my_drone_info[drone.drone_id].unfinished_cargo_ids)) { 
                 if (drone.battery < 50) {
-                    drones_need_recharge.push_back(drone);  // 注意充电
+                    drones_need_recharge.push_back(drone);  // 注意优先去充电
                 }
                 else{
-                    drones_without_cargo.push_back(drone);
+                    // 我需要无人机的最大重量，最大订单数量，当前时间等信息，选择和排序可配送的订单
+                    DroneLimits dl = this->_task_info->drones.front().drone_limits;
+                    std::vector<CargoInfo> cargoes_to_delivery_and_no_accepted = cargoes_to_delivery;
+
+                    // 删掉已经被其它飞机接单的cargo
+                    for (const auto& pair : my_drone_info) {
+                        removeAcceptedCargoes(cargoes_to_delivery_and_no_accepted, my_drone_info[pair.first].unfinished_cargo_ids);
+                    }
+
+                    std::vector<CargoInfo> delivery_order = selectAndOrderCargoes(cargoes_to_delivery_and_no_accepted, 
+                                            drone.position, dl.max_weight, dl.max_cargo_slots, 15, 10, 10, 0);
+
+                    std::vector<int> unfinished_order;
+                    double total_weight = 0.0;  // 用于跟踪unfinished_order中的总重量
+                    while (!delivery_order.empty() && unfinished_order.size() < dl.max_cargo_slots) {
+                        // 取出delivery_order中最早加入的元素（在vector的前面）
+                        CargoInfo earliest_order = delivery_order.front();
+                        
+                        // 检查添加这个订单后总重量是否会超过限制
+                        if (total_weight + earliest_order.weight <= dl.max_weight) {
+                            // 添加到unfinished_order，并更新总重量
+                            unfinished_order.push_back(earliest_order.id);
+                            total_weight += earliest_order.weight;
+                        } else {
+                            // 如果添加这个订单会导致超过重量限制，就跳出循环
+                            break;
+                        }
+                        
+                        // 从delivery_order中移除已经加入到unfinished_order的元素
+                        delivery_order.erase(delivery_order.begin());
+                    }
+                    while (unfinished_order.size() < dl.max_cargo_slots) {
+                        unfinished_order.push_back(-1); 
+                    }
+                    my_drone_info[drone.drone_id].unfinished_cargo_ids = unfinished_order;
+                    
+                    drones_to_pick.push_back(drone);
                 }    
             } 
-            else {  // 货仓中有cargo
-                drones_to_delivery.push_back(drone);
+            else {
+                // 
+                if (drone.delivering_cargo_ids != my_drone_info[drone.drone_id].unfinished_cargo_ids){
+                    drones_to_pick.push_back(drone); // 没有取到所有货物，先取货物 
+                }
+                else{
+                    if (has_cargo){
+                        drones_to_delivery.push_back(drone); // 取到所有货物，开始配送 
+                    } 
+                }
             }
-            // continue;
-            break;  // 1017：先做空中保留随机一架飞机跑通全流程
+            continue;
         } 
         // TODO 参赛选手需要依据无人机信息定制化特殊操作
     }
     LOG(INFO) << "drone info size: " << this->_drone_info.size()
-              << ", drones without cargo size: " << drones_without_cargo.size()
+              << ", drones to pick cargo: size: " << drones_to_pick.size()
               << ", drones to delivery size: " << drones_to_delivery.size()
               << ", drones need recharge size: " << drones_need_recharge.size();
-    LOG(INFO) << "drones without cargo: ";
-    for (auto d : drones_without_cargo) {
+    LOG(INFO) << "drones to pick cargo: ";
+    for (auto d : drones_to_pick) {
         LOG(INFO) << d.drone_id;
     }
 
@@ -138,15 +314,20 @@ int64_t myAlgorithm::solve() {
     int64_t current_time = current.count();
     std::vector<std::tuple<std::string, FlightPlan>> flight_plans_to_publish;  //下发飞行任务
 
+    
     // 无人机与订单进行匹配，并生成飞行轨迹
     // 示例策略1：为没有订单的无人机生成取订单航线
     // 取无人机和订单数量较小的值
-    int pickup_plan_num = cargoes_to_delivery.size() < drones_without_cargo.size()
+    int pickup_plan_num = cargoes_to_delivery.size() < drones_to_pick.size()
                               ? cargoes_to_delivery.size()
-                              : drones_without_cargo.size();
+                              : drones_to_pick.size();
 
     for (int i = 0; i < pickup_plan_num; i++) {
-        auto the_drone = drones_without_cargo.at(i);
+        
+        auto the_drone = drones_to_pick.at(i);
+        
+
+        
         auto the_cargo = cargoes_to_delivery.at(i);
         LOG(INFO) << "go to pick cargo, id: " << the_cargo.id << ", start: " << the_cargo.position.x
                   << " " << the_cargo.position.y << " " << the_cargo.position.z
@@ -291,6 +472,10 @@ int64_t myAlgorithm::solve() {
 // trajectory_generation(复杂，有额外奖励)
 std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec3 start, Vec3 end,
                                                                              DroneStatus drone) {
+    
+    MyDroneInfo current_drone_info = my_drone_info[drone.drone_id];
+    double flying_height = current_drone_info.flying_height;
+    
     std::vector<Segment> traj_segs;
     int64_t flight_time;
     // TODO 选手需要自行设计
@@ -307,7 +492,7 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
 
     p2_pos.x = start.x;
     p2_pos.y = start.y;
-    p2_pos.z = 120;
+    p2_pos.z = flying_height;
     p2.position = p2_pos;
 
     p1.seg_type = 0;
@@ -316,7 +501,7 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
     Vec3 p3_pos;
     p3_pos.x = end.x;
     p3_pos.y = end.y;
-    p3_pos.z = 120;
+    p3_pos.z = flying_height;
     p3.position = p3_pos;
     p3.seg_type = 1;
     p4.position = end;
@@ -334,7 +519,9 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
         return {std::vector<mtuav::Segment>{}, -1};
     }
     int64_t p1top2_flight_time = p1top2_segs.back().time_ms;  // p1->p2飞行时间
-    // 生成p2->p3段轨迹点
+
+
+    // 生成p2->p3段轨迹点（这里需要改进）
     std::vector<mtuav::Segment> p2top3_segs;
     bool success_2 = tg.generate_traj_from_waypoints({p2.position, p3.position}, dl, 1, p2top3_segs);
     LOG(INFO) << "p2top3 traj gen: " << std::boolalpha << success_2;
@@ -342,6 +529,8 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
         return {std::vector<mtuav::Segment>{}, -1};
     }
     int64_t p2top3_flight_time = p2top3_segs.back().time_ms;  // p2->p3飞行时间
+    
+    
     // 生成p3->p4段轨迹点
     std::vector<mtuav::Segment> p3top4_segs;
     bool success_3 = tg.generate_traj_from_waypoints({p3.position, p4.position}, dl, 2, p3top4_segs);

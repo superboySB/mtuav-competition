@@ -87,5 +87,5 @@ valgrind --leak-check=full ./mtuav_sdk_example 2> valgrind_output.txt
 
 
 # SIPP
-./path_finding  ../params/task_example.xml  ../params/map_example.xml  ../params/config_example.xml  ../params/obstacles_example.xml 
+./path_finding  ../params/task.xml  ../params/map.xml  ../params/config.xml
 ```

@@ -181,9 +181,9 @@ public:
     template <class T>
     bool checkLine(int x1, int y1, int x2, int y2, const T &map)
     {
-        //if(!checkTraversability(x1, y1) || !checkTraversability(x2, y2)) //additional check of start and goal traversability,
-        //    return false;                                                //it can be removed if they are already checked
-
+        // 计算两点在 x 和 y 方向上的差值。
+        // 如果线段的斜率大于1且从右到左或斜率小于等于1且从上到下，则交换两个点的位置。
+        // 这是为了确保线段总是从左到右或从下到上绘制。
         int delta_x = std::abs(x1 - x2);
         int delta_y = std::abs(y1 - y2);
         if((delta_x > delta_y && x1 > x2) || (delta_y >= delta_x && y1 > y2))
@@ -191,15 +191,22 @@ public:
             std::swap(x1, x2);
             std::swap(y1, y2);
         }
+
+        // 确定在 x 和 y 方向上的步长。初始化 Bresenham 算法的误差值和当前位置。
+        // 计算一个 gap 值，它基于代理的大小和两点之间的距离。这个值用于确定在哪里进行额外的障碍物检查。
         int step_x = (x1 < x2 ? 1 : -1);
         int step_y = (y1 < y2 ? 1 : -1);
         int error = 0, x = x1, y = y1;
         int gap = agentSize*sqrt(pow(delta_x, 2) + pow(delta_y, 2)) + double(delta_x + delta_y)/2 - CN_EPSILON;
         int k, num;
-
+        
+        // 主要的逻辑区分。如果 delta_x > delta_y，则线段主要在 x 方向上移动；否则，主要在 y 方向上移动。
         if(delta_x > delta_y)
         {
+            // 计算一个值 extraCheck，它决定了在哪里进行额外的障碍物检查。
             int extraCheck = agentSize*delta_y/sqrt(pow(delta_x, 2) + pow(delta_y, 2)) + 0.5 - CN_EPSILON;
+
+            // 一个循环，用于检查线段的两侧是否有障碍物。
             for(int n = 1; n <= extraCheck; n++)
             {
                 error += delta_y;
@@ -213,6 +220,8 @@ public:
                         if(map.CellIsObstacle(x2 + n*step_x, y2 - k*step_y))
                             return false;
             }
+
+            // 这是 Bresenham 算法的主要循环，用于检查线段上的每个点是否有障碍物。
             error = 0;
             for(x = x1; x != x2 + step_x; x+=step_x)
             {

@@ -42,7 +42,7 @@
 #define CNS_LOGLVL_NORM	"regular"
 #define CNS_LOGLVL_FULL "full"
 
-//initial prioritization
+//initial prioritization 初始优先级
 #define CN_IP_SHORTESTF  1
 #define CN_IP_LONGESTF   2
 #define CN_IP_RANDOM     3
@@ -53,7 +53,7 @@
 #define CNS_IP_RANDOM    "random"
 #define CNS_IP_FIFO      "fifo"
 
-//rescheduling
+// rescheduling 解不出来的相应对策
 #define CN_RE_NO         1
 #define CN_RE_RULED      2
 #define CN_RE_RANDOM     3

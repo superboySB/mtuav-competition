@@ -116,7 +116,7 @@ bool Map::CellIsObstacle(int i, int j) const
     return (Grid[i][j] != 0);
 }
 
-bool Map::CellOnGrid(int i, int j) const
+bool Map::CellOnGrid(int i, int j) const  // TODO: 这里感觉应该再收紧一点范围
 {
     return (i < height && i >= 0 && j < width && j >= 0);
 }
@@ -146,7 +146,7 @@ std::vector<Node> Map::getValidMoves(int i, int j, int k, double size) const
                 Node(0,-1,1.0),         Node(-1,-1,sqrt(2.0)),  Node(-1,0,1.0),         Node(-1,1,sqrt(2.0)),
                 Node(1,2,sqrt(5.0)),    Node(2,1,sqrt(5.0)),    Node(2,-1,sqrt(5.0)),   Node(1,-2,sqrt(5.0)),
                 Node(-1,-2,sqrt(5.0)),  Node(-2,-1,sqrt(5.0)),  Node(-2,1,sqrt(5.0)),   Node(-1,2,sqrt(5.0))};
-   else
+   else   // 类似一个grid单位走斜线
        moves = {Node(0,1,1.0),          Node(1,1,sqrt(2.0)),    Node(1,0,1.0),          Node(1,-1,sqrt(2.0)),
                 Node(0,-1,1.0),         Node(-1,-1,sqrt(2.0)),  Node(-1,0,1.0),         Node(-1,1,sqrt(2.0)),
                 Node(1,2,sqrt(5.0)),    Node(2,1,sqrt(5.0)),    Node(2,-1,sqrt(5.0)),   Node(1,-2,sqrt(5.0)),
@@ -156,10 +156,15 @@ std::vector<Node> Map::getValidMoves(int i, int j, int k, double size) const
                 Node(-1,-3,sqrt(10.0)), Node(-2,-3,sqrt(13.0)), Node(-3,-2,sqrt(13.0)), Node(-3,-1,sqrt(10.0)),
                 Node(-3,1,sqrt(10.0)),  Node(-3,2,sqrt(13.0)),  Node(-2,3,sqrt(13.0)),  Node(-1,3,sqrt(10.0))};
    std::vector<bool> valid(moves.size(), true);
-   for(int k = 0; k < moves.size(); k++)
+   // 遍历所有的移动。
+   for(int k = 0; k < moves.size(); k++) 
+       // 检查每个移动是否在地图范围内，是否会经过障碍，以及是否存在直线路径过程被障碍物阻挡。
+       // 如果任何这些条件不满足，该移动被标记为无效。
        if(!CellOnGrid(i + moves[k].i, j + moves[k].j) || CellIsObstacle(i + moves[k].i, j + moves[k].j)
                || !los.checkLine(i, j, i + moves[k].i, j + moves[k].j, *this))
            valid[k] = false;
+
+   // 定义一个向量来存储有效的移动。
    std::vector<Node> v_moves = {};
    for(int k = 0; k < valid.size(); k++)
        if(valid[k])

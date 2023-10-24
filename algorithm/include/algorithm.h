@@ -10,11 +10,23 @@
 #include "mtuav_sdk_types.h"
 #include "planner.h"
 #include "traj_generation.hpp"
+#include <unordered_map>
 
 // 用于表示当前无人机信息
 using drones_info = std::vector<mtuav::DroneStatus>;
 // 用于表示当前订单信息
 using cargoes_info = std::map<int, mtuav::CargoInfo>;
+
+// 用于表示我想飞的无人机的信息
+struct MyDroneInfo {
+    float flying_height;
+    std::vector<std::vector<int>> static_grid;
+    std::vector<int> unfinished_cargo_ids;
+
+    // 构造函数
+    MyDroneInfo() : flying_height(120), unfinished_cargo_ids({-1, -1, -1}) {}
+};
+
 
 using namespace ::mtuav;
 namespace mtuav::algorithm {
@@ -63,6 +75,11 @@ class myAlgorithm : public Algorithm {
     std::tuple<std::vector<Segment>, int64_t> trajectory_generation(Vec3 start, Vec3 end, DroneStatus drone);
     // 打印segment的信息
     std::string segments_to_string(std::vector<Segment> segs);
+
+    float map_min_x, map_max_x, map_min_y, map_max_y, map_min_z, map_max_z;
+    std::unordered_map<std::string, MyDroneInfo> my_drone_info; 
+    // void update_my_map_info(DroneStatus drone);  
+    // void update_my_task_info(DroneStatus drone);  
 };
 
 // TODO: 依据自己的设计添加所需的类，下面举例说明一些常用功能类

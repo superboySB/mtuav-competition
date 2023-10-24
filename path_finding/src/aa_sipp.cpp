@@ -18,10 +18,15 @@ bool AA_SIPP::stopCriterion(const Node &curNode, Node &goalNode)
         std::cout << "OPEN list is empty! ";
         return true;
     }
+    // 检查当前节点curNode的位置是否与目标节点的位置相同，并且其时间间隔的结束是否为无穷大。
+    // 这一检查是为了确定是否已经到达了目标位置，并且时间没有限制。
     if(curNode.i == curagent.goal_i && curNode.j == curagent.goal_j && curNode.interval.end == CN_INFINITY)
     {
+        // 如果不需要计划转向或者目标的方向是任意的，则将当前节点设置为目标节点。
         if(!config->planforturns || curagent.goal_heading == CN_HEADING_WHATEVER)
             goalNode = curNode;
+        // 否则，检查目标节点的代价是否大于当前节点的代价加上从当前节点到目标方向的转向代价。
+        // 这是为了确定是否需要更新目标节点的代价。
         else if(goalNode.g > curNode.g + getRCost(curNode.heading, curagent.goal_heading))
         {
             goalNode = curNode;
@@ -29,17 +34,18 @@ bool AA_SIPP::stopCriterion(const Node &curNode, Node &goalNode)
             goalNode.F = curNode.F + getRCost(curNode.heading, curagent.goal_heading);
         }
     }
+    // 如果需要更新，则将当前节点设置为目标节点，并更新其代价和总代价。
     if(goalNode.F - CN_EPSILON < curNode.F)
         return true;
     return false;
 }
 
-double AA_SIPP::getCost(int a_i, int a_j, int b_i, int b_j)
+double AA_SIPP::getCost(int a_i, int a_j, int b_i, int b_j)  // TODO: 这里直接就用的除以V得到到达时间，不合理，应该换成MT的
 {
     return sqrt((a_i - b_i) * (a_i - b_i) + (a_j - b_j) * (a_j - b_j));
 }
 
-double AA_SIPP::getHValue(int i, int j)
+double AA_SIPP::getHValue(int i, int j)  // TODO: 这里直接就用的除以V得到到达时间，不合理，应该换成MT的
 {
     if(config->allowanyangle || config->connectedness > 3) //euclid
         return (sqrt(pow(i - curagent.goal_i, 2) + pow(j - curagent.goal_j, 2)))/curagent.mspeed;
@@ -68,29 +74,44 @@ double AA_SIPP::calcHeading(const Node &node, const Node &son)
 
 std::list<Node> AA_SIPP::findSuccessors(const Node curNode, const Map &map)
 {
-    Node newNode, angleNode;
-    std::list<Node> successors;
-    std::vector<double> EAT;
-    std::vector<SafeInterval> intervals;
-    double h_value;
-    auto parent = &(close.find(curNode.i*map.width + curNode.j)->second);
-    std::vector<Node> moves = map.getValidMoves(curNode.i, curNode.j, config->connectedness, curagent.size);
+    Node newNode, angleNode; // 定义两个新节点，一个用于代表新的位置，另一个用于代表转向。
+    std::list<Node> successors;  // 保存找到的所有后继节点。
+    std::vector<double> EAT;  // 保存每个后继节点的估计到达时间
+    std::vector<SafeInterval> intervals;  // 保存安全时间间隔
+    double h_value;  // 保存启发式值
+    auto parent = &(close.find(curNode.i*map.width + curNode.j)->second);  // 从关闭列表中找到当前节点的父节点。
+    std::vector<Node> moves = map.getValidMoves(curNode.i, curNode.j, config->connectedness, curagent.size); // 获取从当前节点开始的所有有效移动。
+    
+    // 遍历每个有效移动。
     for(auto m:moves)
         if(lineofsight.checkTraversability(curNode.i + m.i,curNode.j + m.j,map))
         {
             newNode.i = curNode.i + m.i;
             newNode.j = curNode.j + m.j;
+            // 更新新节点的安全时间间隔。
             constraints->updateCellSafeIntervals({newNode.i,newNode.j});
+
+            // 计算从当前节点到新节点的方向。
+            // 两个节点之间的航向角度。这是通过计算与水平轴的夹角，并在必要时进行修正来完成的。
             newNode.heading = calcHeading(curNode, newNode);
+
+            // 更新 angleNode 的g值以考虑转向的代价。就算不plan angle也依然会考虑尽量不转向。
             angleNode = curNode; //the same state, but with extended g-value
             angleNode.g += getRCost(angleNode.heading, newNode.heading) + config->additionalwait;//to compensate the amount of time required for rotation
+            
+            // 计算新节点的 g 值（从起点到新节点的代价）,将 angleNode 设置为新节点的父节点。
             newNode.g = angleNode.g + m.g/curagent.mspeed;
             newNode.Parent = &angleNode;
+
+            // 计算新节点的启发式值。
             h_value = getHValue(newNode.i, newNode.j);
 
-            if(angleNode.g <= angleNode.interval.end)
+            if(angleNode.g <= angleNode.interval.end) // 如果 angleNode 的 g 值小于或等于其时间间隔的结束时间，那么这是一个有效的移动。
             {
+                // 为新节点找到所有安全的时间间隔。
                 intervals = constraints->findIntervals(newNode, EAT, close, map);
+
+                // 对于每个安全的时间间隔，更新新节点的属性并将其添加到后继列表中。
                 for(unsigned int k = 0; k < intervals.size(); k++)
                 {
                     newNode.interval = intervals[k];
@@ -100,31 +121,33 @@ std::list<Node> AA_SIPP::findSuccessors(const Node curNode, const Map &map)
                     successors.push_front(newNode);
                 }
             }
-            if(config->allowanyangle)
-            {
-                newNode = resetParent(newNode, curNode, map);
-                if(newNode.Parent->i != parent->i || newNode.Parent->j != parent->j)
-                {
-                    angleNode = *newNode.Parent;
-                    newNode.heading = calcHeading(*newNode.Parent, newNode);//new heading with respect to new parent
-                    angleNode.g += getRCost(angleNode.heading, newNode.heading) + config->additionalwait;//count new additional time required for rotation
-                    newNode.g += getRCost(angleNode.heading, newNode.heading) + config->additionalwait;
-                    newNode.Parent = &angleNode;
-                    if(angleNode.g > angleNode.interval.end)
-                        continue;
-                    intervals = constraints->findIntervals(newNode, EAT, close, map);
-                    for(unsigned int k = 0; k < intervals.size(); k++)
-                    {
-                        newNode.interval = intervals[k];
-                        newNode.Parent = parent->Parent;
-                        newNode.g = EAT[k];
-                        newNode.F = newNode.g + h_value;
-                        successors.push_front(newNode);
-                    }
-                }
-            }
+            // if(config->allowanyangle)  // 允许任意角度的移动，但这样会引入原地不动的successors
+            // {
+            //     newNode = resetParent(newNode, curNode, map);  // 重置新节点的父节点，以考虑任意角度的移动。
+            //     if(newNode.Parent->i != parent->i || newNode.Parent->j != parent->j)  // 如果新节点的父节点与当前父节点不同。
+            //     {
+            //         // 重新计算新节点和角度节点的 g 值、方向和时间间隔，并将新节点添加到后继列表中。
+            //         angleNode = *newNode.Parent;
+            //         newNode.heading = calcHeading(*newNode.Parent, newNode);//new heading with respect to new parent
+            //         angleNode.g += getRCost(angleNode.heading, newNode.heading) + config->additionalwait;//count new additional time required for rotation
+            //         newNode.g += getRCost(angleNode.heading, newNode.heading) + config->additionalwait;
+            //         newNode.Parent = &angleNode;
+            //         if(angleNode.g > angleNode.interval.end)
+            //             continue;
+            //         intervals = constraints->findIntervals(newNode, EAT, close, map);
+            //         for(unsigned int k = 0; k < intervals.size(); k++)
+            //         {
+            //             newNode.interval = intervals[k];
+            //             newNode.Parent = parent->Parent;
+            //             newNode.g = EAT[k];
+            //             newNode.F = newNode.g + h_value;
+            //             successors.push_front(newNode);
+            //         }
+            //     }
+            // }
         }
 
+    // 返回找到的所有后继节点。
     return successors;
 }
 
@@ -302,15 +325,8 @@ bool AA_SIPP::changePriorities(int bad_i)
 
 SearchResult AA_SIPP::startSearch(Map &map, Task &task, DynamicObstacles &obstacles)
 {
-
-#ifdef __linux__
     timeval begin, end;
     gettimeofday(&begin, NULL);
-#else
-    LARGE_INTEGER begin, end, freq;
-    QueryPerformanceCounter(&begin);
-    QueryPerformanceFrequency(&freq);
-#endif
     bool solution_found(false);
     int tries(0), bad_i(0);
     double timespent(0);
@@ -351,7 +367,7 @@ SearchResult AA_SIPP::startSearch(Map &map, Task &task, DynamicObstacles &obstac
                 auto cells = lineofsight.getCells(curagent.start_i, curagent.start_j);
                 constraints->removeStartConstraint(cells, curagent.start_i, curagent.start_j);
             }
-            if(findPath(current_priorities[numOfCurAgent], map))
+            if(findPath(current_priorities[numOfCurAgent], map))   //开启主要的A*搜索
                 constraints->addConstraints(sresult.pathInfo[current_priorities[numOfCurAgent]].sections, curagent.size, curagent.mspeed, map);
             else
             {
@@ -364,25 +380,14 @@ SearchResult AA_SIPP::startSearch(Map &map, Task &task, DynamicObstacles &obstac
 
         delete constraints;
         tries++;
-#ifdef __linux__
-    gettimeofday(&end, NULL);
-    timespent = (end.tv_sec - begin.tv_sec) + static_cast<double>(end.tv_usec - begin.tv_usec) / 1000000;
-#else
-    QueryPerformanceCounter(&end);
-    timespent = static_cast<double long>(end.QuadPart-begin.QuadPart) / freq.QuadPart;
-#endif
+        gettimeofday(&end, NULL);
+        timespent = (end.tv_sec - begin.tv_sec) + static_cast<double>(end.tv_usec - begin.tv_usec) / 1000000;
         if(timespent > config->timelimit)
             break;
     } while(changePriorities(bad_i) && !solution_found);
 
-
-#ifdef __linux__
     gettimeofday(&end, NULL);
     sresult.runtime = (end.tv_sec - begin.tv_sec) + static_cast<double>(end.tv_usec - begin.tv_usec) / 1000000;
-#else
-    QueryPerformanceCounter(&end);
-    sresult.runtime = static_cast<double long>(end.QuadPart-begin.QuadPart) / freq.QuadPart;
-#endif
     sresult.tries = tries;
     if(sresult.pathfound)
     {
@@ -406,49 +411,58 @@ Node AA_SIPP::resetParent(Node current, Node Parent, const Map &map)
     return current;
 }
 
+//此函数是为编号为 numOfCurAgent 的机器人在给定的 map 中查找路径。该函数返回一个布尔值，表示是否找到了路径。
 bool AA_SIPP::findPath(unsigned int numOfCurAgent, const Map &map)
 {
-
-#ifdef __linux__
+    // 用于获取函数开始时的时间,这可以用来后续计算搜索路径所需的时间。
     timeval begin, end;
     gettimeofday(&begin, NULL);
-#else
-    LARGE_INTEGER begin, end, freq;
-    QueryPerformanceCounter(&begin);
-    QueryPerformanceFrequency(&freq);
-#endif
+
+    // 初始化 close 和 open 列表。close 列表用于存储已处理过的节点，而 open 列表用于存储待处理的节点。
     close.clear();
     for(unsigned int i = 0; i< open.size(); i++)
         open[i].clear();
     ResultPathInfo resultPath;
     openSize = 0;
+
+    // 重置所有安全间隔。安全间隔表示机器人可以在没有碰撞的情况下移动的时间段。
     constraints->resetSafeIntervals(map.width, map.height);
+
+    // 为当前代理的起始位置更新安全间隔。
     constraints->updateCellSafeIntervals({curagent.start_i, curagent.start_j});
-    Node curNode(curagent.start_i, curagent.start_j, 0, 0), goalNode(curagent.goal_i, curagent.goal_j, CN_INFINITY, CN_INFINITY);
+
+    // 初始化当前节点（起始节点）和目标节点，为当前节点计算启发式值和安全间隔。
+    Node curNode(curagent.start_i, curagent.start_j, 0, 0), goalNode(curagent.goal_i, curagent.goal_j, 
+                                                                CN_INFINITY, CN_INFINITY);
     curNode.F = getHValue(curNode.i, curNode.j);
     curNode.interval = constraints->getSafeInterval(curNode.i, curNode.j, 0);
+    
+    // 设置当前节点的方向为代理的起始方向。将当前节点添加到 open 列表中并增加 openSize。
     curNode.heading = curagent.start_heading;
     open[curNode.i].push_back(curNode);
     openSize++;
+
+    // 搜索，直到满足停止准则。
     while(!stopCriterion(curNode, goalNode))
     {
-        curNode = findMin(map.height);
+        // 从 open 列表中找到具有最小F值的节点
+        // 如果有多个节点具有相同的F值，那么选择具有最大g值的那个节点（这样可以更倾向于选择更接近目标的节点）。
+        curNode = findMin(map.height); 
+
+        // 从 open 列表中移除当前节点并减少 openSize, 将当前节点添加到 close 列表中。
         open[curNode.i].pop_front();
         openSize--;
         close.insert({curNode.i * map.width + curNode.j, curNode});
+
+        // 为当前节点找到所有后继并将它们添加到 open 列表中。
         for(Node s:findSuccessors(curNode, map))
             addOpen(s);
     }
-    if(goalNode.g < CN_INFINITY)
+    if(goalNode.g < CN_INFINITY)  //如果目标节点的g值小于无穷大，则找到了路径
     {
         makePrimaryPath(goalNode);
-#ifdef __linux__
         gettimeofday(&end, NULL);
         resultPath.runtime = (end.tv_sec - begin.tv_sec) + static_cast<double>(end.tv_usec - begin.tv_usec) / 1000000;
-#else
-        QueryPerformanceCounter(&end);
-        resultPath.runtime = static_cast<double long>(end.QuadPart-begin.QuadPart) / freq.QuadPart;
-#endif
         resultPath.sections = hppath;
         makeSecondaryPath(goalNode);
         resultPath.pathfound = true;
@@ -460,15 +474,10 @@ bool AA_SIPP::findPath(unsigned int numOfCurAgent, const Map &map)
         sresult.pathInfo[numOfCurAgent] = resultPath;
         sresult.agentsSolved++;
     }
-    else
+    else  // 如果没有找到路径
     {
-#ifdef __linux__
         gettimeofday(&end, NULL);
         resultPath.runtime = (end.tv_sec - begin.tv_sec) + static_cast<double>(end.tv_usec - begin.tv_usec) / 1000000;
-#else
-        QueryPerformanceCounter(&end);
-        resultPath.runtime = static_cast<double long>(end.QuadPart-begin.QuadPart) / freq.QuadPart;
-#endif
         std::cout<<"Path for agent "<<curagent.id<<" not found!\n";
         sresult.pathfound = false;
         resultPath.pathfound = false;
@@ -585,6 +594,7 @@ std::vector<conflict> AA_SIPP::CheckConflicts(const Task &task)
 
 void AA_SIPP::makePrimaryPath(Node curNode)
 {
+    // hppath 是一个全局的 std::vector，它存储了从起始点到目标点的主要路径。首先，我们清除它的内容并尝试减小其容量。
     hppath.clear();
     hppath.shrink_to_fit();
     std::list<Node> path;
@@ -631,6 +641,7 @@ void AA_SIPP::makePrimaryPath(Node curNode)
 
 void AA_SIPP::makeSecondaryPath(Node curNode)
 {
+    // 清除 lppath，它是一个全局的 std::list，用于存储从起始点到目标点的次要路径。
     lppath.clear();
     if(curNode.Parent != nullptr)
     {

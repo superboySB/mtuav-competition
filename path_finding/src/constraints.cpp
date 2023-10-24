@@ -53,29 +53,43 @@ void Constraints::resetSafeIntervals(int width, int height)
 
 void Constraints::updateCellSafeIntervals(std::pair<int, int> cell)
 {
+    // 如果该单元格已有多个安全时间间隔，函数不会进行进一步的操作。
     if(safe_intervals[cell.first][cell.second].size() > 1)
         return;
+    
+    // 使用 LineOfSight 对象查找所有与当前单元格相交的单元格。这些是代理可能与其发生碰撞的单元格。
     LineOfSight los(agentsize);
     std::vector<std::pair<int, int>> cells = los.getCells(cell.first, cell.second);
     std::vector<section> secs;
+
+    // 确保 secs 列表包含了与当前单元格相交的所有单元格中的所有约束，而没有任何重复。
+    // 这是为了后续在计算可能的碰撞时能够考虑到所有相关的约束。
     for(int k = 0; k < cells.size(); k++)
         for(int l = 0; l < constraints[cells[k].first][cells[k].second].size(); l++)
             if(std::find(secs.begin(), secs.end(), constraints[cells[k].first][cells[k].second][l]) == secs.end())
                 secs.push_back(constraints[cells[k].first][cells[k].second][l]);
 
+    // 对于每一个约束，计算与当前代理的可能的碰撞。
+    // 如果发现了碰撞，该时间段将从单元格的安全间隔中移除。
     for(int k = 0; k < secs.size(); k++)
     {
-        section sec = secs[k];
-        double radius = agentsize + sec.size;
+        section sec = secs[k];  // 每个sec是一个约束，代表其他代理的移动。
+        double radius = agentsize + sec.size;  // 根据当前约束和代理位置计算碰撞半径：
         int i0(secs[k].i1), j0(secs[k].j1), i1(secs[k].i2), j1(secs[k].j2), i2(cell.first), j2(cell.second);
         SafeInterval interval;
+
+        // 计算代理中心到约束代表的线段的最小距离。
         double dist, mindist;
         if(i0 == i1 && j0 == j1 && i0 == i2 && j0 == j2)
             mindist = 0;
         else
             mindist = minDist(Point(i2,j2), Point(i0,j0), Point(i1,j1));
+
+        //  如果这个距离大于或等于碰撞半径，说明没有碰撞，可以继续处理下一个约束：
         if(mindist >= radius)
             continue;
+        
+        // 确定代理与约束线段之间的关系。
         Point point(i2,j2), p0(i0,j0), p1(i1,j1);
         int cls = point.classify(p0, p1);
         dist = fabs((i0 - i1)*j2 + (j1 - j0)*i2 + (j0*i1 - i0*j1))/sqrt(pow(i0 - i1, 2) + pow(j0 - j1, 2));
@@ -83,6 +97,8 @@ void Constraints::updateCellSafeIntervals(std::pair<int, int> cell)
         int db = (i1 - i2)*(i1 - i2) + (j1 - j2)*(j1 - j2);
         double ha = sqrt(da - dist*dist);
         double size = sqrt(radius*radius - dist*dist);
+
+        // 考虑了代理与约束线段的几种可能的相对位置，并根据这些位置计算碰撞的开始和结束时间。
         if(cls == 3)
         {
             interval.begin = sec.g1;
@@ -120,8 +136,12 @@ void Constraints::updateCellSafeIntervals(std::pair<int, int> cell)
                 interval.end = sec.g1 + ha/sec.mspeed + size/sec.mspeed;
             }
         }
+
+        // 一旦我们知道了与约束线段的碰撞时间，我们就需要根据这些时间调整单元格的安全时间间隔。
         for(unsigned int j = 0; j < safe_intervals[i2][j2].size(); j++)
         {
+            // 检查了当前安全时间间隔与碰撞时间是否有重叠：
+            // 如果有重叠，我们需要调整安全时间间隔以考虑这些碰撞。这可以通过减少或分割安全时间间隔来完成。
             if(safe_intervals[i2][j2][j].begin < interval.begin + CN_EPSILON && safe_intervals[i2][j2][j].end + CN_EPSILON > interval.begin)
             {
                 if(fabs(safe_intervals[i2][j2][j].begin - interval.begin) < CN_EPSILON)
@@ -143,6 +163,8 @@ void Constraints::updateCellSafeIntervals(std::pair<int, int> cell)
                     new2.first = interval.end;
                     new2.second = safe_intervals[i2][j2][j].end;
                     safe_intervals[i2][j2].erase(safe_intervals[i2][j2].begin() + j);
+                    
+                    // 以下代码部分将安全时间间隔分割为两个新的间隔：
                     if(new2.first < CN_INFINITY)
                         safe_intervals[i2][j2].insert(safe_intervals[i2][j2].begin() + j, SafeInterval(new2.first, new2.second));
                     safe_intervals[i2][j2].insert(safe_intervals[i2][j2].begin() + j, SafeInterval(new1.first, new1.second));
