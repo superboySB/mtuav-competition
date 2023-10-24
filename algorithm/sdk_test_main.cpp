@@ -202,6 +202,8 @@ int main(int argc, const char* argv[]) {
             LOG(INFO) << " Stop task by ctrl+c ";
             break;
         }
+        // 记录开始时间点
+        auto start = std::chrono::high_resolution_clock::now();
 
         LOG(INFO) << "Soving the problem using the the algorithm designed by contestants. ";
         // 调用算法类求解前，先更获取最新的动态信息
@@ -209,8 +211,13 @@ int main(int argc, const char* argv[]) {
         LOG(INFO) << "The latest dynamic info has been fetched. ";
         // 调用算法求解函数，solve函数内内部输出飞行计划,返回值为下次调用算法求解间隔（毫秒）
         int64_t sleep_time_ms = alg->solve();
-        LOG(INFO) << "Algorithm calculation completed, the next call interval is " << sleep_time_ms
-                  << " ms.";
+
+        // 记录结束时间点
+        auto stop = std::chrono::high_resolution_clock::now();
+        // 计算所经历的时间
+        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
+        LOG(INFO) << "Algorithm calculation completed, time consumes " << duration.count() << " ms, "
+                  << "the next call interval is " << sleep_time_ms << " ms.";
         // 选手可自行控制算法的调用间隔
         std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time_ms));
     }

@@ -33,7 +33,7 @@ class Planner : public mtuav::PlannerAgent {
             for (auto& s : status) {
                 LOG(INFO) << "drone id: " << s.drone_id << ", status: " << int(s.status)
                           << ", position: " << s.position.x << "-" << s.position.y << "-"
-                          << s.position.z << ", cargo id size: " << s.delivering_cargo_ids.size();
+                          << s.position.z << ", cargo id size: " << s..size();
                 for (auto id : s.delivering_cargo_ids) {
                     LOG(INFO) << "c-id: " << id;
                 }

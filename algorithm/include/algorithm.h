@@ -22,9 +22,24 @@ struct MyDroneInfo {
     float flying_height;
     std::vector<std::vector<int>> static_grid;
     std::vector<int> unfinished_cargo_ids;
+    Vec3 target_station_position;
+    Vec3 start_position;
+    Vec3 end_position;
 
     // 构造函数
-    MyDroneInfo() : flying_height(120), unfinished_cargo_ids({-1, -1, -1}) {}
+    MyDroneInfo() : flying_height(120), unfinished_cargo_ids({-1, -1, -1}) {
+        target_station_position.x = -1;
+        target_station_position.y = -1;
+        target_station_position.z = -1;
+
+        start_position.x = -1;
+        start_position.y = -1;
+        start_position.z = -1;
+
+        end_position.x = -1;
+        end_position.y = -1;
+        end_position.z = -1;
+    }
 };
 
 
@@ -78,8 +93,7 @@ class myAlgorithm : public Algorithm {
 
     float map_min_x, map_max_x, map_min_y, map_max_y, map_min_z, map_max_z;
     std::unordered_map<std::string, MyDroneInfo> my_drone_info; 
-    // void update_my_map_info(DroneStatus drone);  
-    // void update_my_task_info(DroneStatus drone);  
+    void update_my_map_and_task_info(DroneStatus drone);  
 };
 
 // TODO: 依据自己的设计添加所需的类，下面举例说明一些常用功能类
