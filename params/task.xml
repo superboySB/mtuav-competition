@@ -1,7 +1,6 @@
 <?xml version="1.0" ?>
 <root>
 	<agents number="1">
-		<defaultparameters size="0.4" movespeed="0.25" rotationspeed="1" start.heading="0" goal.heading="-1"/>
-		<agent id="0" start.x="1" start.y="1" goal.x="30" goal.y="40"/>
+		<agent id="0" start.x="1" start.y="500" goal.x="1000" goal.y="100"/>
 	</agents>
 </root>

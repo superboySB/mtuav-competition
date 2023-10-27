@@ -26,39 +26,6 @@ void sigint_handler(int sig) {
     }
 }
 
-// 生成新的XML字符串（只是一个示例，你可能需要根据自己的需要进行修改）
-std::string GenerateNewXML(int width, int height, const std::vector<std::vector<int>>& grid) {
-    std::ostringstream xmlStream;
-    xmlStream << "<grid>\n";
-    xmlStream << "  <width>" << width << "</width>\n";
-    xmlStream << "  <height>" << height << "</height>\n";
-    xmlStream << "  <data>\n";
-    for (const auto& row : grid) {
-        for (const auto& cell : row) {
-            xmlStream << cell << " ";
-        }
-        xmlStream << "\n";
-    }
-    xmlStream << "  </data>\n";
-    xmlStream << "</grid>\n";
-    return xmlStream.str();
-}
-
-void SaveXMLToFile(const std::string& xmlContent, std::string mode, std::string drone_id) {
-    std::stringstream filePathStream;
-    filePathStream << "/workspace/mtuav-competition/params/"<< mode<<"-" << drone_id << ".xml";
-    std::string filePath = filePathStream.str();
-
-    std::ofstream outFile(filePath);
-    if (outFile.is_open()) {
-        outFile << xmlContent;
-        outFile.close();
-        std::cout << "XML has been successfully saved to " << filePath << std::endl;
-    } else {
-        std::cout << "Unable to open file for writing: " << filePath << std::endl;
-    }
-}
-
 void initialize_my_drone_info(std::unordered_map<std::string, MyDroneInfo>& my_drone_info, 
         std::shared_ptr<Map> map, float map_min_x, float map_max_x, float map_min_y, 
         float map_max_y, float map_min_z, float map_max_z) {
@@ -98,9 +65,8 @@ void initialize_my_drone_info(std::unordered_map<std::string, MyDroneInfo>& my_d
         int new_width = grid[0].size();
         int new_height = grid.size();
 
-        // 使用新的width、height和grid生成新的XML
-        
-        std::string newXML = GenerateNewXML(new_width, new_height, grid);
+        // 使用新的width、height和grid生成map的XML   
+        std::string newXML = GenerateMapNewXML(new_width, new_height, grid);
         std::string mode = "map";
         SaveXMLToFile(newXML, mode, pair.first);
     }
@@ -154,6 +120,9 @@ int main(int argc, const char* argv[]) {
     int task_num = planner->GetTaskCount();
     LOG(INFO) << "Task num: " << task_num;
     // TODO 选手指定比赛任务索引
+    // Caution!!!
+    // 通过sdk获取到3个任务，第一个和第二个任务为测试任务(获取到的任务列表索引为0和1)，可以无限次执行；
+    // 第三个任务为正式比赛任务(获取到的任务列表索引为2)，限制为最多执行5次，最终结果为5次之中最好的成绩。
     int task_idx = 0;
     // 获取比赛任务指针
     auto task = planner->QueryTask(task_idx);
@@ -202,22 +171,18 @@ int main(int argc, const char* argv[]) {
             LOG(INFO) << " Stop task by ctrl+c ";
             break;
         }
-        // 记录开始时间点
-        auto start = std::chrono::high_resolution_clock::now();
 
         LOG(INFO) << "Soving the problem using the the algorithm designed by contestants. ";
         // 调用算法类求解前，先更获取最新的动态信息
         alg->update_dynamic_info();
         LOG(INFO) << "The latest dynamic info has been fetched. ";
+        
+        // [核心]
         // 调用算法求解函数，solve函数内内部输出飞行计划,返回值为下次调用算法求解间隔（毫秒）
         int64_t sleep_time_ms = alg->solve();
+        // [核心]
 
-        // 记录结束时间点
-        auto stop = std::chrono::high_resolution_clock::now();
-        // 计算所经历的时间
-        auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop - start);
-        LOG(INFO) << "Algorithm calculation completed, time consumes " << duration.count() << " ms, "
-                  << "the next call interval is " << sleep_time_ms << " ms.";
+        LOG(INFO) << "Algorithm calculation completed, the next call interval is " << sleep_time_ms << " ms.";
         // 选手可自行控制算法的调用间隔
         std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time_ms));
     }

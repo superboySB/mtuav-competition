@@ -19,19 +19,19 @@ using cargoes_info = std::map<int, mtuav::CargoInfo>;
 
 // 用于表示我想飞的无人机的信息
 struct MyDroneInfo {
-    float flying_height;
+    double flying_height;
     std::vector<std::vector<int>> static_grid;
     std::vector<int> unfinished_cargo_ids;
-    Vec3 target_station_position;
-    Vec3 start_position;
+    
+    Vec3 start_position; // 目前尝试：保证飞机间起点终点在空间上完全无冲突
     Vec3 end_position;
+    Vec3 target_station_position;
+
+    std::vector<mtuav::Segment> path_segs;  // TODO: 后续准备尝试插入悬停段，实现时空上完全无冲突
+    int current_seg_id;
 
     // 构造函数
     MyDroneInfo() : flying_height(120), unfinished_cargo_ids({-1, -1, -1}) {
-        target_station_position.x = -1;
-        target_station_position.y = -1;
-        target_station_position.z = -1;
-
         start_position.x = -1;
         start_position.y = -1;
         start_position.z = -1;
@@ -39,6 +39,10 @@ struct MyDroneInfo {
         end_position.x = -1;
         end_position.y = -1;
         end_position.z = -1;
+
+        target_station_position.x = -1;
+        target_station_position.y = -1;
+        target_station_position.z = -1;
     }
 };
 
@@ -85,7 +89,7 @@ class myAlgorithm : public Algorithm {
 
     // * 需要选手自行添加所需的函数
     // 示例：给定起点、终点，返回无人机WayPoint飞行轨迹与飞行时间
-    std::tuple<std::vector<Segment>, int64_t> waypoints_generation(Vec3 start, Vec3 end);
+    // std::tuple<std::vector<Segment>, int64_t> waypoints_generation(Vec3 start, Vec3 end);
     // 示例：给定起点、终点与无人机，返回无人机trajectory飞行轨迹与飞行时间
     std::tuple<std::vector<Segment>, int64_t> trajectory_generation(Vec3 start, Vec3 end, DroneStatus drone);
     // 打印segment的信息
@@ -93,7 +97,7 @@ class myAlgorithm : public Algorithm {
 
     float map_min_x, map_max_x, map_min_y, map_max_y, map_min_z, map_max_z;
     std::unordered_map<std::string, MyDroneInfo> my_drone_info; 
-    void update_my_map_and_task_info(DroneStatus drone);  
+    std::vector<Vec3> generate_waypoints_by_a_star(Vec3 start, Vec3 end, DroneStatus drone);  
 };
 
 // TODO: 依据自己的设计添加所需的类，下面举例说明一些常用功能类

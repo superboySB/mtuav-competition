@@ -1,4 +1,5 @@
 #include <glog/logging.h>
+#include <cstdlib> // for system()
 #include <algorithm>    // C++ STL 算法库
 #include "algorithm.h"  // 选手自行设计的算法头文件
 #include "math.h"
@@ -183,11 +184,15 @@ void removeConflictCargoes(std::vector<CargoInfo>& cargoes_to_delivery_and_no_ac
         std::remove_if(
             cargoes_to_delivery_and_no_accepted.begin(), 
             cargoes_to_delivery_and_no_accepted.end(),
-            [&unfinished_order, safety_distance](const CargoInfo& cargo) {
+            [&unfinished_order, safety_distance,cargo_info](const CargoInfo& cargo) {
                 for (const auto& other_cargo_id : unfinished_order) {
                     if (other_cargo_id == -1) continue;
                     CargoInfo other_cargo = cargo_info.at(other_cargo_id);
-                    if (distance_2D(cargo.position, other_cargo.position) < safety_distance+3) {  //加一个缓冲距离
+                    if ((distance_2D(cargo.position, other_cargo.position) < safety_distance+3) ||
+                        (distance_2D(cargo.position, other_cargo.target_position) < safety_distance+3) ||
+                        (distance_2D(cargo.target_position, other_cargo.position) < safety_distance+3) ||
+                        (distance_2D(cargo.target_position, other_cargo.target_position) < safety_distance+3)
+                        ) {  //加一个缓冲距离
                         return true;  // 删除这个可能导致碰撞的货物
                     }
                 }
@@ -205,6 +210,9 @@ bool operator==(const Vec3& a, const Vec3& b) {
 // TODO 需要参赛选手自行设计求解算法
 // TODO 下面给出一个简化版示例，用于说明无人机飞行任务下发方式
 int64_t myAlgorithm::solve() {
+    // 【计时】记录开始时间点
+    auto start_time = std::chrono::high_resolution_clock::now();
+
     // 处理订单信息，找出可进行配送的订单集合
     std::vector<CargoInfo> cargoes_to_delivery;
     for (auto& [id, cargo] : this->_cargo_info) {
@@ -277,10 +285,13 @@ int64_t myAlgorithm::solve() {
                 else{
                     // 我需要无人机的最大重量，最大订单数量，当前时间等信息，选择和排序可配送的订单
                     DroneLimits dl = this->_task_info->drones.front().drone_limits;
-                    std::vector<CargoInfo> cargoes_to_delivery_and_no_accepted = cargoes_to_delivery;
+                    std::vector<CargoInfo> cargoes_to_delivery_and_no_accepted = cargoes_to_delivery;  // 拷贝一个临时变量
 
                     
                     for (const auto& pair : my_drone_info) {
+                        // 不用检验自己这一架
+                        if (pair.first == drone.drone_id) continue;
+
                         // 删掉已经被其它飞机接单的cargo
                         removeAcceptedCargoes(cargoes_to_delivery_and_no_accepted, pair.second.unfinished_cargo_ids);
 
@@ -289,6 +300,7 @@ int64_t myAlgorithm::solve() {
                                             this->_cargo_info, 10);
                     }
 
+                    // 以可行解为优先的多步贪心（速度估计暂时采用保守的15m/s，因为直接飞直线大概能到19，但不知道避障的开销)
                     std::vector<CargoInfo> delivery_order = selectAndOrderCargoes(cargoes_to_delivery_and_no_accepted, 
                                             drone.position, dl.max_weight, dl.max_cargo_slots, 15, 10, 10, 0);
 
@@ -312,7 +324,7 @@ int64_t myAlgorithm::solve() {
                         delivery_order.erase(delivery_order.begin());
                     }
 
-                    if (unfinished_order.size()>0){
+                    if (!unfinished_order.empty()){
                         while (unfinished_order.size() < dl.max_cargo_slots) {
                             unfinished_order.push_back(-1); 
                         }
@@ -328,7 +340,7 @@ int64_t myAlgorithm::solve() {
                 }
                 else{
                     if (has_cargo){
-                        drones_to_delivery.push_back(drone); // 取到所有货物，开始配送 
+                        drones_to_delivery.push_back(drone); // 应该已经取到所有货物了，开始配送 
                     } 
                 }
             }
@@ -455,7 +467,7 @@ int64_t myAlgorithm::solve() {
         for (const auto& station : all_battery_stations) {
             bool occupy_flag = false;
             for (const auto& pair : my_drone_info) {
-                auto target = my_drone_info[pair.first].target_station_position;
+                auto target = pair.second.target_station_position;
                 if (target == station) {
                     LOG(INFO) << "Charging Station occupied";
                     occupy_flag = true;
@@ -491,7 +503,7 @@ int64_t myAlgorithm::solve() {
             the_selected_station = available_battery_stations.at(the_station_idx);
             my_drone_info[the_drone.drone_id].target_station_position = the_selected_station;
         } else {
-            break;
+            break;   // 没有可用的话，就保持ready继续等待有充电站可以用吧，理论上是1000ms充满，检验状态机判定是否准确
         }
         FlightPlan recharge;
         // TODO 参赛选手需要自己实现一个轨迹生成函数或中转点生成函数
@@ -524,6 +536,7 @@ int64_t myAlgorithm::solve() {
     }
 
     // TODO 找出需要悬停的无人机
+    // 这件事情感觉没有很大必要，对于不是实时感知的系统来说也很危险，我先试试能否在时序冲突处理的时候先提前插入代表悬停的segs
     // 下发无人机悬停指令
     // for (auto& drone : drones_to_hover) {
     //     this->_planner->DroneHover(drone.drone_id);
@@ -532,28 +545,59 @@ int64_t myAlgorithm::solve() {
 
     // 根据算法计算情况，得出下一轮的算法调用间隔，单位ms
     int64_t sleep_time_ms = 2000;
-    // 依据需求计算所需的sleep time，这部分内容移到了主函数内部
+
+    // 依据需求计算所需的sleep time
     // sleep_time_ms = Calculate_sleep_time();
+    // 记录结束时间点
+    auto stop_time = std::chrono::high_resolution_clock::now();
+    // 计算所经历的时间
+    auto duration = std::chrono::duration_cast<std::chrono::microseconds>(stop_time - start_time);
+    LOG(INFO) << "One solve procress consumes " << duration.count() << " ms";
+
     return sleep_time_ms;
 }
 
 
-// 1023:自己维护一个恶心心的状态机
-void myAlgorithm::update_my_map_and_task_info(DroneStatus drone) {}
+std::vector<Vec3> myAlgorithm::generate_waypoints_by_a_star(Vec3 start, Vec3 end, DroneStatus drone) {
+    // 下面只是二维规划即可。因为三维上，事先已经划分了空域，所以高度都是固定值
+    double flying_height = my_drone_info[drone.drone_id].flying_height;
+    my_drone_info[drone.drone_id].start_position = start;
+    my_drone_info[drone.drone_id].end_position = end;
+
+    // 使用新的start、end生成task的XML   
+    std::string newXML = GenerateTaskNewXML(start, end);
+    std::string mode = "task";
+    SaveXMLToFile(newXML, mode, drone.drone_id);
+
+    // 执行SIPP
+    std::string executable_path = "/workspace/mtuav-competition/build/path_finding";
+    std::ostringstream pathStream1;
+    pathStream1 << "/workspace/mtuav-competition/params/task-" << drone.drone_id << ".xml";
+    std::string arg1 = pathStream1.str();
+    std::ostringstream pathStream2;
+    pathStream2 << "/workspace/mtuav-competition/params/map-" << drone.drone_id << ".xml";
+    std::string arg2 = pathStream2.str();
+    std::ostringstream pathStream3;
+    pathStream3 << "/workspace/mtuav-competition/params/config.xml";
+    std::string arg3 = pathStream3.str();
+    std::ostringstream cmd;
+    cmd << executable_path << " " << arg1 << " " << arg2 << " " << arg3;
+    system(cmd.str().c_str());
+
+    //提取运行结果
+    std::ostringstream pathStream_read;
+    pathStream_read << "/workspace/mtuav-competition/params/task-" << drone.drone_id << "_log.xml";
+    std::string path_read = pathStream_read.str();
+    std::vector<Vec3> waypoints = ReadXMLFromFile(path_read,flying_height);
+
+    return waypoints;
+}
 
 
 // 官方原装的轨迹规划魔改版（复杂，有额外奖励）
 std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec3 start, Vec3 end,
                                                                              DroneStatus drone) {
-    // 1023:自己维护一个恶心心的状态机
-    my_drone_info[drone.drone_id].start_position = start;
-    my_drone_info[drone.drone_id].end_position = end;
-    
-
-
     double flying_height = my_drone_info[drone.drone_id].flying_height;
-    
-    std::vector<Segment> traj_segs;
     int64_t flight_time;
     // TODO 选手需要自行设计
     // 获取地图信息
@@ -574,6 +618,10 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
 
     p1.seg_type = 0;
     p2.seg_type = 0;
+
+    // 自己用一个恶心心的状态机，使用A*来做无冲突规划，如果中间没有障碍的话，应该这个值是空的
+    std::vector<Vec3> flying_waypoints = generate_waypoints_by_a_star(start, end, drone);
+
     Segment p3, p4;  // p3 终点上方高度120米，p4 终点
     Vec3 p3_pos;
     p3_pos.x = end.x;
@@ -598,15 +646,18 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
     int64_t p1top2_flight_time = p1top2_segs.back().time_ms;  // p1->p2飞行时间
 
 
-    // 生成p2->p3段轨迹点（这里需要改进）
+    // 生成p2->p3段轨迹点（TODO: 这里需要改进成A*）
     std::vector<mtuav::Segment> p2top3_segs;
-    bool success_2 = tg.generate_traj_from_waypoints({p2.position, p3.position}, dl, 1, p2top3_segs);
+    std::vector<mtuav::Vec3> all_waypoints;
+    all_waypoints.push_back(p2.position); // 添加起始点
+    all_waypoints.insert(all_waypoints.end(), flying_waypoints.begin(), flying_waypoints.end()); // 在起始点和终点之间插入额外的航点
+    all_waypoints.push_back(p3.position); // 添加终点
+    bool success_2 = tg.generate_traj_from_waypoints(all_waypoints, dl, 1, p2top3_segs);
     LOG(INFO) << "p2top3 traj gen: " << std::boolalpha << success_2;
     if (success_2 == false) {
         return {std::vector<mtuav::Segment>{}, -1};
     }
     int64_t p2top3_flight_time = p2top3_segs.back().time_ms;  // p2->p3飞行时间
-    
     
     // 生成p3->p4段轨迹点
     std::vector<mtuav::Segment> p3top4_segs;
@@ -639,14 +690,14 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
         p3top4_segs[i].time_ms = p3top4_segs[i].time_ms + p2top3_last_time;
     }
 
-    // 更新轨迹点时间后，合并轨迹
-    std::vector<mtuav::Segment> p1top4_segs;
-    p1top4_segs.insert(p1top4_segs.end(), p1top2_segs.begin(), p1top2_segs.end());
-    p1top4_segs.insert(p1top4_segs.end(), p2top3_segs.begin(), p2top3_segs.end());
-    p1top4_segs.insert(p1top4_segs.end(), p3top4_segs.begin(), p3top4_segs.end());
+    // 更新轨迹点时间后，合并轨迹，这里需要加入我做的无碰撞轨迹
+    std::vector<mtuav::Segment> traj_segs;
+    traj_segs.insert(traj_segs.end(), p1top2_segs.begin(), p1top2_segs.end());
+    traj_segs.insert(traj_segs.end(), p2top3_segs.begin(), p2top3_segs.end());
+    traj_segs.insert(traj_segs.end(), p3top4_segs.begin(), p3top4_segs.end());
 
     // LOG(INFO) << "combined segs detail: ";
-    // for (auto s : p1top4_segs) {
+    // for (auto s : traj_segs) {
     //     LOG(INFO) << "seg, p: " << s.position.x << " " << s.position.y << " " << s.position.z
     //               << ", time_ms: " << s.time_ms << ", a: " << s.a.x << " " << s.a.y << " " << s.a.z
     //               << ", v: " << s.v.x << " " << s.v.y << " " << s.v.z << ", type: " << s.seg_type;
@@ -655,7 +706,7 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
     // 计算p1->p4时间
     int64_t p1top4_flight_time = p1top2_flight_time + p2top3_flight_time + p3top4_flight_time;
 
-    return {p1top4_segs, p1top4_flight_time};
+    return {traj_segs, p1top4_flight_time};
 }
 
 std::string myAlgorithm::segments_to_string(std::vector<Segment> segs) {
@@ -672,3 +723,5 @@ std::string myAlgorithm::segments_to_string(std::vector<Segment> segs) {
 }
 
 }  // namespace mtuav::algorithm
+
+

@@ -26,16 +26,10 @@ link_directories(libs/)
 set(TEST_MAIN_SRC algorithm/sdk_test_main.cpp
     ${PROJECT_SOURCE_DIR}/algorithm/src/algorithm.cpp
     ${PROJECT_SOURCE_DIR}/algorithm/src/current_game_info.cpp
+    path_finding/src/tinyxml2.cpp
 )
 add_executable(mtuav_sdk_example ${TEST_MAIN_SRC})
 target_link_libraries(mtuav_sdk_example mtuav_sdk -lpthread -lglog)
-
-# ------------------------------------------------------------------------------------------
-# 测试专用
-# 添加test_map.cpp的路径
-# set(TEST_MAP_SRC tests/test_map.cpp)
-# add_executable(test_map ${TEST_MAP_SRC})
-# target_link_libraries(test_map ${DIR_SKD_LIBS} -lglog)
 
 # 添加SIPP的单独测试路径
 set(SIPP_SRC
@@ -52,7 +46,8 @@ set(SIPP_SRC
 add_executable(path_finding ${SIPP_SRC})
 target_link_libraries(path_finding -lpthread -lglog)
 
-
+# ------------------------------------------------------------------------------------------
+# 测试专用，未实际接入到源代码
 # 添加ortools的单独测试路径
 set(TEST_ORTOOLS_SRC tests/test_ortools.cpp)
 add_executable(test_ortools ${TEST_ORTOOLS_SRC})

@@ -83,7 +83,7 @@ void Mission::saveSearchResultsToLog()
     m_pLogger->writeToLogSummary(sr);
     if(sr.pathfound)
     {
-        m_pLogger->writeToLogMap(m_map, sr);
+        // m_pLogger->writeToLogMap(m_map, sr);
         m_pLogger->writeToLogPath(sr, m_task, m_config);
     }
     m_pLogger->saveLog();
