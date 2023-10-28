@@ -87,5 +87,9 @@ valgrind --leak-check=full ./mtuav_sdk_example 2> valgrind_output.txt
 
 
 # SIPP
+/workspace/mtuav-competition/build/path_finding /workspace/mtuav-competition/params/task.xml /workspace/mtuav-competition/params/map.xml  /workspace/mtuav-competition/params/config.xml
+
 ./path_finding  /workspace/mtuav-competition/params/task.xml /workspace/mtuav-competition/params/map.xml  /workspace/mtuav-competition/params/config.xml
+
+./path_finding  /workspace/mtuav-competition/params/task-drone-003.xml /workspace/mtuav-competition/params/map-drone-003.xml  /workspace/mtuav-competition/params/config.xml
 ```

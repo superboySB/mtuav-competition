@@ -2,7 +2,7 @@
 <root>
 	<algorithm>
 		<allowanyangle>false</allowanyangle>
-		<connectedness>5</connectedness>
+		<connectedness>3</connectedness>
 		<rescheduling>rulebased</rescheduling>
 		<startsafeinterval>0</startsafeinterval>
 		<prioritization>fifo</prioritization>

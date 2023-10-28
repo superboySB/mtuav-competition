@@ -73,7 +73,7 @@ std::string GenerateTaskNewXML(const Vec3& start, const Vec3& end) {
     xmlStream << "<?xml version=\"1.0\" ?>\n";
     xmlStream << "<root>\n";
     xmlStream << "  <agents number=\"1\">\n";
-    xmlStream << "    <agent id= 0 ";
+    xmlStream << "    <agent id=\"0\" ";
     xmlStream << "start.x=\"" << start.x << "\" start.y=\"" << start.y << "\" ";
     xmlStream << "goal.x=\"" << end.x << "\" goal.y=\"" << end.y << "\"/>\n";
     xmlStream << "  </agents>\n";

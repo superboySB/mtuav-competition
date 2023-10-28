@@ -142,7 +142,7 @@ typedef struct TaskInfo {
   // 换电站信息
   std::vector<Vec3> battery_stations;
   // 临时降落点信息
-  std::vector<Vec3> landing_positions;
+  std::vector<Vec3> landing_positions;  // TODO: 目前这个还没有用到，如果赛题中说它们保持固定，能否进行平行分工呢？
 } TaskInfo;
 
 enum Status {
