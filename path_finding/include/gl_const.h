@@ -9,7 +9,7 @@
 #define CN_OBSTL            1
 
 //default values
-#define CN_DEFAULT_SIZE                     0.5
+#define CN_DEFAULT_SIZE                     0.05
 #define CN_DEFAULT_RSPEED                   1.0
 #define CN_DEFAULT_MSPEED                   1.0
 #define CN_DEFAULT_SHEADING                 0

@@ -51,7 +51,7 @@ void initialize_my_drone_info(std::unordered_map<std::string, MyDroneInfo>& my_d
                     int ix = (x - map_min_x) / step;
                     int iy = (y - map_min_y) / step;
                     // Use the distance value to set the grid cell value
-                    if (voxel->distance <= 4) {
+                    if (voxel->distance <= 6) {
                         grid[iy][ix] = 1;
                     } else {
                         grid[iy][ix] = 0;

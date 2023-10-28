@@ -22,6 +22,8 @@ struct MyDroneInfo {
     double flying_height;
     std::vector<std::vector<int>> static_grid;
     std::vector<int> unfinished_cargo_ids;
+    std::vector<int> hold_up_cargo_list;
+    std::vector<int> black_cargo_list;
     
     Vec3 start_position; // 目前尝试：保证飞机间起点终点在空间上完全无冲突
     Vec3 end_position;
