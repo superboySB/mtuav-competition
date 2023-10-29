@@ -359,7 +359,7 @@ int64_t myAlgorithm::solve() {
         
         // 如果发现电量不够，就立即让飞机去充电
         float current_battery = drone.battery;
-        if ((current_battery < 95) && (drone.status == Status::FLYING) && (my_drone_info[drone.drone_id].target_station_position.x ==-1) &&
+        if ((current_battery < 50) && (drone.status == Status::FLYING) && (my_drone_info[drone.drone_id].target_station_position.x ==-1) &&
                 (my_drone_info[drone.drone_id].target_station_position.y ==-1) && (my_drone_info[drone.drone_id].target_station_position.z ==-1)){
             drones_to_hover.push_back(drone);
             continue; 
@@ -398,16 +398,15 @@ int64_t myAlgorithm::solve() {
             continue;     
         }
         
+        // 如果发现电量够了，就取消目前目标充电站的占用啦
+        if (current_battery > 50 && drone.status == Status::FLYING){ 
+            my_drone_info[drone.drone_id].target_station_position.x = -1;
+            my_drone_info[drone.drone_id].target_station_position.y = -1;
+            my_drone_info[drone.drone_id].target_station_position.z = -1;
+        }
 
         // 无人机状态为READY
         if (drone.status == Status::READY) {
-            // 如果发现电量够了，就取消目前目标充电站的占用啦
-            if (current_battery > 95){ 
-                my_drone_info[drone.drone_id].target_station_position.x = -1;
-                my_drone_info[drone.drone_id].target_station_position.y = -1;
-                my_drone_info[drone.drone_id].target_station_position.z = -1;
-            }
-
             // bool has_cargo = false;
             // bool has_black = false;
             double current_weight = 0;
