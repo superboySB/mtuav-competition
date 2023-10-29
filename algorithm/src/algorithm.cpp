@@ -311,7 +311,7 @@ int64_t myAlgorithm::solve() {
                   << ", drone status: " << int(drone.status);
         LOG(INFO) << "cargo info:";
         for (auto c : drone.delivering_cargo_ids) LOG(INFO) << "delivering-c-id: " << c;
-        
+
         if(my_drone_info.find(drone.drone_id) == my_drone_info.end()){
             LOG(INFO) << "Now we do not use: " << drone.drone_id;
             continue;
@@ -325,11 +325,19 @@ int64_t myAlgorithm::solve() {
                         (!my_drone_info[drone.drone_id].black_cargo_list.empty()))||(drone.status == Status::CRASH)){
             if (!my_drone_info[drone.drone_id].has_sussessor){
                 my_drone_info[drone.drone_id].unfinished_cargo_ids.clear();
+                my_drone_info[drone.drone_id].target_break_position = drone.position;
+                my_drone_info[drone.drone_id].has_sussessor = true;
+
                 std::string new_drone_id = unused_drone_id.front();
                 my_drone_info[new_drone_id].flying_height = my_drone_info[drone.drone_id].flying_height;
                 my_drone_info[new_drone_id].static_grid = my_drone_info[drone.drone_id].static_grid;
-                drone.position==my_drone_info[drone.drone_id].target_break_position = drone.position;
-                my_drone_info[drone.drone_id].has_sussessor = true;
+                 // 计算新的width和height
+                int new_width = my_drone_info[new_drone_id].static_grid[0].size();
+                int new_height = my_drone_info[new_drone_id].static_grid.size();
+                // 使用新的width、height和grid生成map的XML   
+                std::string newXML = GenerateMapNewXML(new_width, new_height, my_drone_info[new_drone_id].static_grid);
+                std::string mode = "map";
+                SaveXMLToFile(newXML, mode, new_drone_id);
                 unused_drone_id.erase(unused_drone_id.begin());
             }
         }
