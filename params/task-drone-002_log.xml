@@ -4,15 +4,11 @@
         <taskfilename>/workspace/mtuav-competition/params/task-drone-002.xml</taskfilename>
         <mapfilename>/workspace/mtuav-competition/params/map-drone-002.xml</mapfilename>
         <configfilename>/workspace/mtuav-competition/params/config.xml</configfilename>
-        <summary runtime="1.295374" tries="1" agentssolved="1 (100.000000%)" flowtime="1588.6825" makespan="1588.6825"/>
-        <agent id="0" start.x="20" start.y="0" goal.x="1344" goal.y="639" size="0.050000001" movespeed="1" rotationspeed="1">
-            <path pathfound="true" runtime="0.27360499" duration="1588.6825">
-                <section id="0" start.x="20" start.y="0" goal.x="151" goal.y="131" duration="185.26198"/>
-                <section id="1" start.x="151" start.y="131" goal.x="224" goal.y="131" duration="73"/>
-                <section id="2" start.x="224" start.y="131" goal.x="560" goal.y="467" duration="475.17575"/>
-                <section id="3" start.x="560" start.y="467" goal.x="660" goal.y="467" duration="100"/>
-                <section id="4" start.x="660" start.y="467" goal.x="832" goal.y="639" duration="243.24474"/>
-                <section id="5" start.x="832" start.y="639" goal.x="1344" goal.y="639" duration="512"/>
+        <summary runtime="9.3840151" tries="1" agentssolved="1 (100.000000%)" flowtime="56.254833" makespan="56.254833"/>
+        <agent id="0" start.x="3844" start.y="4542" goal.x="3887" goal.y="4574" size="0.050000001" movespeed="1" rotationspeed="1">
+            <path pathfound="true" runtime="1.373484" duration="56.254833">
+                <section id="0" start.x="3844" start.y="4542" goal.x="3876" goal.y="4574" duration="45.254833"/>
+                <section id="1" start.x="3876" start.y="4574" goal.x="3887" goal.y="4574" duration="11"/>
             </path>
         </agent>
     </log>

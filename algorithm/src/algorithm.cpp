@@ -2,6 +2,7 @@
 #include <cstdlib> // for system()
 #include <algorithm>    // C++ STL 算法库
 #include "algorithm.h"  // 选手自行设计的算法头文件
+#include <cmath>
 #include "math.h"
 
 
@@ -190,33 +191,50 @@ void removeConflictCargoes(std::vector<CargoInfo>& cargoes_to_delivery_and_no_ac
                            std::map<int, mtuav::CargoInfo> cargo_info,
                            double safety_distance,
                            double flying_height,
-                           const std::vector<int>& black_list) {
+                           const std::vector<int>& black_list,
+                           Vec3 target_station_position,
+                           Vec3 target_break_position) {
     // 删除所有可能导致与其他无人机碰撞的货物
     cargoes_to_delivery_and_no_accepted.erase(
         std::remove_if(
             cargoes_to_delivery_and_no_accepted.begin(), 
             cargoes_to_delivery_and_no_accepted.end(),
-            [&unfinished_order, safety_distance,cargo_info, flying_height,black_list](const CargoInfo& cargo) {
+            [&unfinished_order, safety_distance,cargo_info, flying_height,black_list,
+                    target_station_position, target_break_position](const CargoInfo& cargo) {
                 // 会有地点很高的外卖
                 if ((cargo.position.z >= flying_height) || (cargo.target_position.z >= flying_height))  {
                     return true;
                 }
+                
                 // 死活拿不到的外卖
                 auto it = std::find(black_list.begin(), black_list.end(), cargo.id);
                 if (it != black_list.end()) return true;
-
+                
                 // 删除这个可能导致碰撞的货物
                 for (const auto& other_cargo_id : unfinished_order) {
                     if (other_cargo_id == -1) continue;
                     CargoInfo other_cargo = cargo_info.at(other_cargo_id);
-                    if ((distance_2D(cargo.position, other_cargo.position) < safety_distance+7) ||
-                        (distance_2D(cargo.position, other_cargo.target_position) < safety_distance+7) ||
-                        (distance_2D(cargo.target_position, other_cargo.position) < safety_distance+7) ||
-                        (distance_2D(cargo.target_position, other_cargo.target_position) < safety_distance+7)
+                    if ((distance_2D(cargo.position, other_cargo.position) < safety_distance*2) ||
+                        (distance_2D(cargo.position, other_cargo.target_position) < safety_distance*2) ||
+                        (distance_2D(cargo.target_position, other_cargo.position) < safety_distance*2) ||
+                        (distance_2D(cargo.target_position, other_cargo.target_position) < safety_distance*2)
                         ) {  //加一个缓冲距离
                         return true;  
                     }
                 }
+
+                // 去充电/休息的飞机
+                if ((target_station_position.x!=-1)||(target_station_position.y!=-1)||(target_station_position.z!=-1) ){
+                    if (distance_2D(cargo.position, target_station_position) < safety_distance*2){
+                        return true;
+                    }
+                }
+                if ((target_break_position.x!=-1)||(target_break_position.y!=-1)||(target_break_position.z!=-1)){
+                    if (distance_2D(cargo.position, target_break_position) < safety_distance*2){
+                        return true;
+                    }
+                }
+
                 return false;  // 保留这个货物
             }
         ),
@@ -224,17 +242,20 @@ void removeConflictCargoes(std::vector<CargoInfo>& cargoes_to_delivery_and_no_ac
     );
 }
 
+const double epsilon = 1e-4;
+
 bool operator==(const Vec3& a, const Vec3& b) {
-    return a.x == b.x && a.y == b.y && a.z == b.z;
+    return std::fabs(a.x - b.x) < epsilon &&
+           std::fabs(a.y - b.y) < epsilon &&
+           std::fabs(a.z - b.z) < epsilon;
 }
 
 double roundUpToMultipleOf4(double num) {
-    return std::ceil((num + 3.0) / 4.0) * 4.0;
-    // if (std::fmod(num, 4) < 1e-6 ){
-    //     return num;
-    // }else{
-    //     return std::ceil((num + 3.0) / 4.0) * 4.0;
-    // }
+    if (std::fmod(num, 4) < epsilon ){
+        return num;
+    }else{
+        return std::ceil((num + 3.0) / 4.0) * 4.0;
+    }
 }
 
 // TODO 需要参赛选手自行设计求解算法
@@ -245,37 +266,33 @@ int64_t myAlgorithm::solve() {
 
     // 处理订单信息，找出可进行配送的订单集合
     std::vector<CargoInfo> cargoes_to_delivery;
-    for (auto& [id, cargo] : this->_cargo_info) {
+    for (const auto& [id, cargo] : this->_cargo_info) {
         // 只有当cargo的状态为CARGO_WAITING时，才是当前可配送的订单
         if (cargo.status == CargoStatus::CARGO_WAITING) {
             cargoes_to_delivery.push_back(cargo);
         }
         // 帮助更新状态机中批量送外卖、已完成/再也不能送的外卖
-        if (cargo.status == CargoStatus::CARGO_DELIVERED || cargo.status == CargoStatus::CARGO_FAILED){
-            for (auto& pair : my_drone_info) {
-                auto& unfinished_cargoes = pair.second.unfinished_cargo_ids;
-
-                // 计算要删除的元素数量（不包括-1）
+        if (cargo.status == CargoStatus::CARGO_DELIVERED || cargo.status == CargoStatus::CARGO_FAILED) {
+            for (auto& [drone_id, drone_info] : my_drone_info) {
+                auto& unfinished_cargoes = drone_info.unfinished_cargo_ids;
+                
                 int count_to_remove = std::count_if(unfinished_cargoes.begin(), unfinished_cargoes.end(),
                                                     [&cargo](int id) { return id == cargo.id; });
-
-                // 删除这些元素
+                
                 auto it = std::remove_if(unfinished_cargoes.begin(), unfinished_cargoes.end(),
                                         [&cargo](int id) { return id == cargo.id; });
                 unfinished_cargoes.erase(it, unfinished_cargoes.end());
-
-                // 添加相应数量的-1以保持列表长度为3
+                
                 for (int i = 0; i < count_to_remove; ++i) {
                     unfinished_cargoes.push_back(-1);
                 }
-
-                // 如果列表长度小于3，则添加更多的-1
+                
                 while (unfinished_cargoes.size() < 3) {
                     unfinished_cargoes.push_back(-1);
                 }
             }
         }
-        // TODO 依据订单信息定制化特殊操作
+        // TODO: 依据订单信息定制化特殊操作
         // 太危险的订单是不是可以不接
     }
     LOG(INFO) << "cargo info size: " << this->_cargo_info.size()
@@ -289,22 +306,36 @@ int64_t myAlgorithm::solve() {
     std::vector<DroneStatus> drones_to_hover;
     
     for (auto& drone : this->_drone_info) {
-        // if (drone.drone_id != "drone-006") continue;  // 1016：先做一架飞机跑通全流程（grade：-1131.500000）
-        // 先规划6架飞机，每一架都间距10米
-        if (my_drone_info.find(drone.drone_id) == my_drone_info.end()){
-            LOG(INFO) << "Now we do not use: " << drone.drone_id;
-            continue;
-        }
-
         // drone status为READY时，表示无人机当前没有飞行计划
         LOG(INFO) << "drone status, id: " << drone.drone_id
                   << ", drone status: " << int(drone.status);
         LOG(INFO) << "cargo info:";
-        for (auto c : drone.delivering_cargo_ids) LOG(INFO) << "c-id: " << c;
-
+        for (auto c : drone.delivering_cargo_ids) LOG(INFO) << "delivering-c-id: " << c;
+        if(my_drone_info.find(drone.drone_id) == my_drone_info.end()){
+            LOG(INFO) << "Now we do not use: " << drone.drone_id;
+            continue;
+        }
+        else{
+            for (auto c: my_drone_info[drone.drone_id].unfinished_cargo_ids) LOG(INFO) << "unfinished-c-id: " << c;
+        }
+        
         // 无人机状态为READY
         if (drone.status == Status::READY) {
+            // 让有问题的飞机光荣退休
+            if ((drone.position==my_drone_info[drone.drone_id].target_break_position) && 
+                            (!my_drone_info[drone.drone_id].black_cargo_list.empty()) &&
+                            (!my_drone_info[drone.drone_id].has_sussessor)){
+                my_drone_info[drone.drone_id].unfinished_cargo_ids.clear();
+                std::string new_drone_id = unused_drone_id.front();
+                my_drone_info[new_drone_id].flying_height = my_drone_info[drone.drone_id].flying_height;
+                my_drone_info[new_drone_id].static_grid = my_drone_info[drone.drone_id].static_grid;
+                my_drone_info[drone.drone_id].has_sussessor = true;
+                unused_drone_id.erase(unused_drone_id.begin());
+                continue;
+            }
+
             bool has_cargo = false;
+            bool has_black = false;
             double current_weight = 0;
             auto tmp_delivering_cargo_ids= drone.delivering_cargo_ids;
             auto tmp_unfinished_cargo_ids= my_drone_info[drone.drone_id].unfinished_cargo_ids;
@@ -312,35 +343,43 @@ int64_t myAlgorithm::solve() {
             for (const auto& element_to_remove: my_drone_info[drone.drone_id].black_cargo_list) {
                 // 循环查找并删除元素
                 auto it = std::find(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), element_to_remove);
-                while (it != tmp_delivering_cargo_ids.end()) {
-                    // 删除元素
-                    tmp_delivering_cargo_ids.erase(it);
-
-                    // 在向量末尾添加-1
-                    tmp_delivering_cargo_ids.push_back(-1);
-
-                    // 重新查找元素
-                    it = std::find(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), element_to_remove);
+                if (it != tmp_delivering_cargo_ids.end()){
+                    has_black=true;
+                    break;
                 }
+                // while (it != tmp_delivering_cargo_ids.end()) {
+                //     // 删除元素
+                //     tmp_delivering_cargo_ids.erase(it);
 
-                auto it = std::find(tmp_unfinished_cargo_ids.begin(), tmp_unfinished_cargo_ids.end(), element_to_remove);
-                while (it != tmp_unfinished_cargo_ids.end()) {
-                    // 删除元素
-                    tmp_unfinished_cargo_ids.erase(it);
+                //     // 在向量末尾添加-1
+                //     tmp_delivering_cargo_ids.push_back(-1);
 
-                    // 在向量末尾添加-1
-                    tmp_unfinished_cargo_ids.push_back(-1);
+                //     // 重新查找元素
+                //     it = std::find(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), element_to_remove);
+                // }
 
-                    // 重新查找元素
-                    it = std::find(tmp_unfinished_cargo_ids.begin(), tmp_unfinished_cargo_ids.end(), element_to_remove);
+                auto it2 = std::find(tmp_unfinished_cargo_ids.begin(), tmp_unfinished_cargo_ids.end(), element_to_remove);
+                if (it2 != tmp_unfinished_cargo_ids.end()){
+                    has_black=true;
+                    break;
                 }
+                // while (it2 != tmp_unfinished_cargo_ids.end()) {
+                //     // 删除元素
+                //     tmp_unfinished_cargo_ids.erase(it2);
+
+                //     // 在向量末尾添加-1
+                //     tmp_unfinished_cargo_ids.push_back(-1);
+
+                //     // 重新查找元素
+                //     it2 = std::find(tmp_unfinished_cargo_ids.begin(), tmp_unfinished_cargo_ids.end(), element_to_remove);
+                // }
             }
 
             std::sort(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), std::greater<>()); // 从大到小排序
             std::sort(tmp_unfinished_cargo_ids.begin(), tmp_unfinished_cargo_ids.end(), std::greater<>()); // 从大到小排序
 
 
-            for (auto cid : drone.tmp_delivering_cargo_ids) {
+            for (auto cid : tmp_delivering_cargo_ids) {
                 // LOG(INFO) << "cid = " << cid;
                 if (cid != -1) {
                     LOG(INFO) << "has cargo = true";
@@ -360,59 +399,70 @@ int64_t myAlgorithm::solve() {
                     drones_need_recharge.push_back(drone);  // 注意优先去充电
                 }
                 else{
-                    // 我需要无人机的最大重量，最大订单数量，当前时间等信息，选择和排序可配送的订单
-                    DroneLimits dl = this->_task_info->drones.front().drone_limits;
-                    std::vector<CargoInfo> cargoes_to_delivery_and_no_accepted = cargoes_to_delivery;  // 拷贝一个临时变量
+                    if (my_drone_info[drone.drone_id].black_cargo_list.empty()){
+                        // 我需要无人机的最大重量，最大订单数量，当前时间等信息，选择和排序可配送的订单
+                        DroneLimits dl = this->_task_info->drones.front().drone_limits;
+                        std::vector<CargoInfo> cargoes_to_delivery_and_no_accepted = cargoes_to_delivery;  // 拷贝一个临时变量
 
-                    
-                    for (const auto& pair : my_drone_info) {
-                        // 自己这一架先试试看能不能躲掉黑名单cargo
-                        // if (pair.first == drone.drone_id) continue;
+                        
+                        for (const auto& pair : my_drone_info) {
+                            // 自己这一架先试试看能不能躲掉黑名单cargo
+                            if (pair.first == drone.drone_id) continue;
 
-                        // 删掉已经被其它飞机接单的cargo
-                        removeAcceptedCargoes(cargoes_to_delivery_and_no_accepted, pair.second.unfinished_cargo_ids);
+                            // 删掉已经被其它飞机接单的cargo
+                            removeAcceptedCargoes(cargoes_to_delivery_and_no_accepted, pair.second.unfinished_cargo_ids);
 
-                        // 删掉其它飞机未来落点下的cargo（TODO：目前是否过于保守）
-                        removeConflictCargoes(cargoes_to_delivery_and_no_accepted, pair.second.unfinished_cargo_ids,
-                                            this->_cargo_info, 10, pair.second.flying_height, pair.second.black_cargo_list);
+                            // 删掉其它飞机未来落点下的cargo（TODO：目前是否过于保守）
+                            removeConflictCargoes(cargoes_to_delivery_and_no_accepted, pair.second.unfinished_cargo_ids,
+                                                this->_cargo_info, 10, pair.second.flying_height, pair.second.black_cargo_list,
+                                                pair.second.target_station_position, pair.second.target_break_position);
+                        }
+
+                        // 以可行解为优先的多步贪心（速度估计暂时采用保守的15m/s，因为直接飞直线大概能到19，但不知道避障的开销)
+                        std::vector<CargoInfo> delivery_order = selectAndOrderCargoes(cargoes_to_delivery_and_no_accepted, 
+                                                drone.position, current_weight, dl.max_weight, dl.max_cargo_slots, 15, 10, 10, 0);
+
+                        std::vector<int> unfinished_order;
+                        double total_weight = 0.0;  // 用于跟踪unfinished_order中的总重量
+                        while (!delivery_order.empty() && unfinished_order.size() < dl.max_cargo_slots) {
+                            // 取出delivery_order中最早加入的元素（在vector的前面）
+                            CargoInfo earliest_order = delivery_order.front();
+                            
+                            // 检查添加这个订单后总重量是否会超过限制
+                            if (total_weight + earliest_order.weight <= dl.max_weight) {
+                                // 添加到unfinished_order，并更新总重量
+                                unfinished_order.push_back(earliest_order.id);
+                                total_weight += earliest_order.weight;
+                            } else {
+                                // 如果添加这个订单会导致超过重量限制，就跳出循环
+                                break;
+                            }
+                            
+                            // 从delivery_order中移除已经加入到unfinished_order的元素
+                            delivery_order.erase(delivery_order.begin());
+                        }
+
+                        if (!unfinished_order.empty()){
+                            while (unfinished_order.size() < dl.max_cargo_slots) {
+                                unfinished_order.push_back(-1); 
+                            }
+                            my_drone_info[drone.drone_id].unfinished_cargo_ids = unfinished_order;
+                            
+                            drones_to_pick.push_back(drone);
+                        } 
+                    } else {
+                        if (!my_drone_info[drone.drone_id].has_sussessor){
+                            drones_need_break.push_back(drone);  // TODO: 如果被卡住的就还是换一架吧
+                        } 
                     }
 
-                    // 以可行解为优先的多步贪心（速度估计暂时采用保守的15m/s，因为直接飞直线大概能到19，但不知道避障的开销)
-                    std::vector<CargoInfo> delivery_order = selectAndOrderCargoes(cargoes_to_delivery_and_no_accepted, 
-                                            drone.position, current_weight, dl.max_weight, dl.max_cargo_slots, 15, 10, 10, 0);
-
-                    std::vector<int> unfinished_order;
-                    double total_weight = 0.0;  // 用于跟踪unfinished_order中的总重量
-                    while (!delivery_order.empty() && unfinished_order.size() < dl.max_cargo_slots) {
-                        // 取出delivery_order中最早加入的元素（在vector的前面）
-                        CargoInfo earliest_order = delivery_order.front();
-                        
-                        // 检查添加这个订单后总重量是否会超过限制
-                        if (total_weight + earliest_order.weight <= dl.max_weight) {
-                            // 添加到unfinished_order，并更新总重量
-                            unfinished_order.push_back(earliest_order.id);
-                            total_weight += earliest_order.weight;
-                        } else {
-                            // 如果添加这个订单会导致超过重量限制，就跳出循环
-                            break;
-                        }
-                        
-                        // 从delivery_order中移除已经加入到unfinished_order的元素
-                        delivery_order.erase(delivery_order.begin());
-                    }
-
-                    if (!unfinished_order.empty()){
-                        while (unfinished_order.size() < dl.max_cargo_slots) {
-                            unfinished_order.push_back(-1); 
-                        }
-                        my_drone_info[drone.drone_id].unfinished_cargo_ids = unfinished_order;
-                        
-                        drones_to_pick.push_back(drone);
-                    } 
                 }    
             } 
             else {
-                if (tmp_delivering_cargo_ids != tmp_unfinished_cargo_ids){
+                if ((tmp_delivering_cargo_ids[0] != tmp_unfinished_cargo_ids[0])||
+                    (tmp_delivering_cargo_ids[1] != tmp_unfinished_cargo_ids[1])||
+                    (tmp_delivering_cargo_ids[2] != tmp_unfinished_cargo_ids[2]))
+                    {
                     drones_to_pick.push_back(drone); // 没有取到所有货物，先取货物 
                 }
                 else{
@@ -467,35 +517,34 @@ int64_t myAlgorithm::solve() {
         auto tmp_delivering_cargo_ids= the_drone.delivering_cargo_ids;
         auto tmp_unfinished_cargo_ids= my_drone_info[the_drone.drone_id].unfinished_cargo_ids;
         // 循环查找并删除元素
-        for (const auto& element_to_remove: my_drone_info[the_drone.drone_id].black_cargo_list) {
-            // 循环查找并删除元素
-            auto it = std::find(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), element_to_remove);
-            while (it != tmp_delivering_cargo_ids.end()) {
-                // 删除元素
-                tmp_delivering_cargo_ids.erase(it);
+        // for (const auto& element_to_remove: my_drone_info[the_drone.drone_id].black_cargo_list) {
+        //     // 循环查找并删除元素
+        //     auto it = std::find(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), element_to_remove);
+        //     while (it != tmp_delivering_cargo_ids.end()) {
+        //         // 删除元素
+        //         tmp_delivering_cargo_ids.erase(it);
 
-                // 在向量末尾添加-1
-                tmp_delivering_cargo_ids.push_back(-1);
+        //         // 在向量末尾添加-1
+        //         tmp_delivering_cargo_ids.push_back(-1);
 
-                // 重新查找元素
-                it = std::find(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), element_to_remove);
-            }
+        //         // 重新查找元素
+        //         it = std::find(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), element_to_remove);
+        //     }
 
-            // 循环查找并删除元素
-            auto it = std::find(tmp_unfinished_cargo_ids.begin(), tmp_unfinished_cargo_ids.end(), element_to_remove);
-            while (it != tmp_unfinished_cargo_ids.end()) {
-                // 删除元素
-                tmp_unfinished_cargo_ids.erase(it);
+        //     // 循环查找并删除元素
+        //     auto it2 = std::find(tmp_unfinished_cargo_ids.begin(), tmp_unfinished_cargo_ids.end(), element_to_remove);
+        //     while (it2 != tmp_unfinished_cargo_ids.end()) {
+        //         // 删除元素
+        //         tmp_unfinished_cargo_ids.erase(it2);
 
-                // 在向量末尾添加-1
-                tmp_unfinished_cargo_ids.push_back(-1);
+        //         // 在向量末尾添加-1
+        //         tmp_unfinished_cargo_ids.push_back(-1);
 
-                // 重新查找元素
-                it = std::find(tmp_unfinished_cargo_ids.begin(), tmp_unfinished_cargo_ids.end(), element_to_remove);
-            }
-        }
+        //         // 重新查找元素
+        //         it2 = std::find(tmp_unfinished_cargo_ids.begin(), tmp_unfinished_cargo_ids.end(), element_to_remove);
+        //     }
+        // }
         
-
         std::sort(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), std::greater<>()); // 从大到小排序
         std::sort(tmp_unfinished_cargo_ids.begin(), tmp_unfinished_cargo_ids.end(), std::greater<>()); // 从大到小排序
         for (size_t j = 0; j < std::round(dl.max_cargo_slots); ++j) {
@@ -541,7 +590,7 @@ int64_t myAlgorithm::solve() {
             // }
             if (!is_hold_up){
                 the_cargo.position.z+=4;
-                my_drone_info[the_drone.drone_id].hold_up_cargo_list.push_back(the_cargo.id);
+                // my_drone_info[the_drone.drone_id].hold_up_cargo_list.push_back(the_cargo.id);
             } else {
                 LOG(INFO) << "Move to blacklist: " << the_cargo.id;
                 my_drone_info[the_drone.drone_id].black_cargo_list.push_back(the_cargo.id);
@@ -573,20 +622,20 @@ int64_t myAlgorithm::solve() {
         int the_cargo_id = 0;
         // 找到货仓中第一个id不为-1的货物
         auto tmp_delivering_cargo_ids= the_drone.delivering_cargo_ids;
-        for (const auto& element_to_remove: my_drone_info[the_drone.drone_id].black_cargo_list) {
-            // 循环查找并删除元素
-            auto it = std::find(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), element_to_remove);
-            while (it != tmp_delivering_cargo_ids.end()) {
-                // 删除元素
-                tmp_delivering_cargo_ids.erase(it);
+        // for (const auto& element_to_remove: my_drone_info[the_drone.drone_id].black_cargo_list) {
+        //     // 循环查找并删除元素
+        //     auto it = std::find(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), element_to_remove);
+        //     while (it != tmp_delivering_cargo_ids.end()) {
+        //         // 删除元素
+        //         tmp_delivering_cargo_ids.erase(it);
 
-                // 在向量末尾添加-1
-                tmp_delivering_cargo_ids.push_back(-1);
+        //         // 在向量末尾添加-1
+        //         tmp_delivering_cargo_ids.push_back(-1);
 
-                // 重新查找元素
-                it = std::find(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), element_to_remove);
-            }
-        }
+        //         // 重新查找元素
+        //         it = std::find(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), element_to_remove);
+        //     }
+        // }
 
         for (auto cid : tmp_delivering_cargo_ids) {
             if (cid != -1) {
@@ -637,7 +686,7 @@ int64_t myAlgorithm::solve() {
                 // }
                 if (!is_hold_up){
                     the_cargo.target_position.z+=4;
-                    my_drone_info[the_drone.drone_id].hold_up_cargo_list.push_back(the_cargo.id);
+                    // my_drone_info[the_drone.drone_id].hold_up_cargo_list.push_back(the_cargo.id);
                 } else {
                     LOG(INFO) << "Move to blacklist: " << the_cargo.id;
                     my_drone_info[the_drone.drone_id].black_cargo_list.push_back(the_cargo.id);
@@ -861,8 +910,8 @@ int64_t myAlgorithm::solve() {
 std::vector<Vec3> myAlgorithm::generate_waypoints_by_a_star(Vec3 start, Vec3 end, DroneStatus drone) {
     // 下面只是二维规划即可。因为三维上，事先已经划分了空域，所以高度都是固定值
     double flying_height = my_drone_info[drone.drone_id].flying_height;
-    my_drone_info[drone.drone_id].start_position = start;
-    my_drone_info[drone.drone_id].end_position = end;
+    // my_drone_info[drone.drone_id].start_position = start;
+    // my_drone_info[drone.drone_id].end_position = end;
 
     // 使用新的start、end生成task的XML   
     std::string newXML = GenerateTaskNewXML(start, end);

@@ -240,7 +240,7 @@ class TrajectoryGeneration {
             dis_info.vel = 0;
             dis_info.travel_dist = info.delta_s1 + info.delta_s2 + info.delta_s3;
         }
-        dis_info.show();
+        // dis_info.show();
         return dis_info;
     }
 
