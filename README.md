@@ -83,6 +83,8 @@ sysctl kernel.core_pattern
 
 ulimit -a | grep core
 
+gdb xxx core
+or
 valgrind --leak-check=full ./mtuav_sdk_example 2> valgrind_output.txt
 
 

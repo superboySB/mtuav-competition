@@ -113,12 +113,12 @@ std::vector<CargoInfo> selectAndOrderCargoes(
                              + distance_2D(b.position,b.target_position) / exp_speed + takeoff_time + landing_time;
 
                 // 计算是否能在限定时间内完成交付
-                bool can_deliver_a = (current_time + time_to_a < a.latest_seconds_left);
-                bool can_deliver_b = (current_time + time_to_b < b.latest_seconds_left);
+                bool can_deliver_a = (current_time + time_to_a <= a.latest_seconds_left);
+                bool can_deliver_b = (current_time + time_to_b <= b.latest_seconds_left);
 
                 // 计算是否超过重量限制
-                bool not_over_weight_a = (current_weight + a.weight < max_weight);
-                bool not_over_weight_b = (current_weight + b.weight < max_weight);
+                bool not_over_weight_a = (current_weight + a.weight <= max_weight);
+                bool not_over_weight_b = (current_weight + b.weight <= max_weight);
 
                 // 综合考虑
                 if (!can_deliver_a && can_deliver_b) return false;
@@ -181,9 +181,9 @@ void removeConflictCargoes(std::vector<CargoInfo>& cargoes_to_delivery_and_no_ac
                            const std::vector<int>& black_list,
                            Vec3 target_station_position,
                            Vec3 target_break_position,
-                           std::vector<Vec3> all_battery_stations,
-                           double factor) {
+                           std::vector<Vec3> all_battery_stations) {
     // 删除所有可能导致与其他无人机碰撞的货物
+    double factor=1.5;
     cargoes_to_delivery_and_no_accepted.erase(
         std::remove_if(
             cargoes_to_delivery_and_no_accepted.begin(), 
@@ -306,6 +306,12 @@ int64_t myAlgorithm::solve() {
     std::vector<DroneStatus> drones_to_delivery;
     std::vector<DroneStatus> drones_to_hover;
     
+    for (const auto& pair : my_drone_info) {
+        LOG(INFO) << pair.first << "'s target charging station: " << pair.second.target_station_position.x
+                  << " " << pair.second.target_station_position.y 
+                  << " " << pair.second.target_station_position.z;
+        }
+
     for (auto& drone : this->_drone_info) {
         // drone status为READY时，表示无人机当前没有飞行计划
         LOG(INFO) << "drone status, id: " << drone.drone_id
@@ -323,15 +329,18 @@ int64_t myAlgorithm::solve() {
         }
 
         // 让有问题的飞机光荣退休，最好不要呀
-        if ((drone.position == my_drone_info[drone.drone_id].target_break_position)
-          ||(drone.status == Status::CRASH)){
-
+        if ((drone.position == my_drone_info[drone.drone_id].target_break_position && !my_drone_info[drone.drone_id].black_cargo_list.empty())
+            ||(drone.status == Status::CRASH)){
+                
             if (drone.status == Status::CRASH){
                 LOG(INFO) << "DroneCrashType: " << drone.crash_type;
             }
             if (!my_drone_info[drone.drone_id].has_sussessor){
                 my_drone_info[drone.drone_id].unfinished_cargo_ids.clear();
                 my_drone_info[drone.drone_id].target_break_position = drone.position;
+                my_drone_info[drone.drone_id].target_station_position.x=-1;
+                my_drone_info[drone.drone_id].target_station_position.y=-1;
+                my_drone_info[drone.drone_id].target_station_position.z=-1;
                 my_drone_info[drone.drone_id].has_sussessor = true;
 
                 std::string new_drone_id = unused_drone_id.front();
@@ -350,9 +359,12 @@ int64_t myAlgorithm::solve() {
         
         // 如果发现电量不够，就立即让飞机去充电
         float current_battery = drone.battery;
-        if ((current_battery < 95) && (drone.status == Status::FLYING)){
+        if ((current_battery < 95) && (drone.status == Status::FLYING) && (my_drone_info[drone.drone_id].target_station_position.x ==-1) &&
+                (my_drone_info[drone.drone_id].target_station_position.y ==-1) && (my_drone_info[drone.drone_id].target_station_position.z ==-1)){
             drones_to_hover.push_back(drone);
-
+            continue; 
+        }
+        if (drone.status == Status::HOVERING){
             // 选心动的充电桩
             auto available_battery_stations = this->_task_info->battery_stations;
             std::sort(available_battery_stations.begin(), available_battery_stations.end(), [drone](Vec3 p1, Vec3 p2) {
@@ -378,18 +390,12 @@ int64_t myAlgorithm::solve() {
                     break;
                 }
             }
+                  
             if (!occupy_flag){
                 my_drone_info[drone.drone_id].target_station_position = the_selected_station;
-            } 
-            continue;
-        }
-        if (drone.status == Status::HOVERING){
-            if (my_drone_info[drone.drone_id].target_station_position.x !=-1 ||
-                my_drone_info[drone.drone_id].target_station_position.y !=-1 ||
-                my_drone_info[drone.drone_id].target_station_position.z !=-1){
-                    drones_need_recharge.push_back(drone);
-                }     
-            continue;
+                 drones_need_recharge.push_back(drone);
+            }
+            continue;     
         }
         
 
@@ -397,9 +403,9 @@ int64_t myAlgorithm::solve() {
         if (drone.status == Status::READY) {
             // 如果发现电量够了，就取消目前目标充电站的占用啦
             if (current_battery > 95){ 
-                my_drone_info[drone.drone_id].target_station_position.x=-1;
-                my_drone_info[drone.drone_id].target_station_position.y=-1;
-                my_drone_info[drone.drone_id].target_station_position.z=-1;
+                my_drone_info[drone.drone_id].target_station_position.x = -1;
+                my_drone_info[drone.drone_id].target_station_position.y = -1;
+                my_drone_info[drone.drone_id].target_station_position.z = -1;
             }
 
             // bool has_cargo = false;
@@ -474,7 +480,7 @@ int64_t myAlgorithm::solve() {
                         removeConflictCargoes(cargoes_to_delivery_and_no_accepted, pair.second.unfinished_cargo_ids,
                                             this->_cargo_info, 10, pair.second.flying_height, pair.second.black_cargo_list,
                                             pair.second.target_station_position, pair.second.target_break_position,
-                                            this->_task_info->battery_stations, 1.5);
+                                            this->_task_info->battery_stations);
                     }
 
                     // 以可行解为优先的多步贪心（速度估计暂时采用保守的15m/s，因为直接飞直线大概能到19，但不知道避障的开销)
@@ -528,9 +534,8 @@ int64_t myAlgorithm::solve() {
                     drones_to_delivery.push_back(drone); // 应该已经取到所有货物了，开始配送 
                     } 
                 } 
-                
+            continue;  
             }
-            continue;
         } 
         // TODO 参赛选手需要依据无人机信息定制化特殊操作
     
@@ -777,7 +782,7 @@ int64_t myAlgorithm::solve() {
     for (auto the_drone : drones_need_recharge) {
         auto the_selected_station = my_drone_info[the_drone.drone_id].target_station_position;
         auto landing_position = the_selected_station;
-        landing_position.z = roundUpToMultipleOf4(the_selected_station.z);
+        // landing_position.z = roundUpToMultipleOf4(the_selected_station.z);
 
         LOG(INFO) << "go to charge station, position: " << the_selected_station.x
                   << " " << the_selected_station.y << " " << the_selected_station.z
@@ -908,7 +913,7 @@ int64_t myAlgorithm::solve() {
     }
 
     // 根据算法计算情况，得出下一轮的算法调用间隔，单位ms
-    int64_t sleep_time_ms = 10000;
+    int64_t sleep_time_ms = 1000;
 
     // 依据需求计算所需的sleep time
     // sleep_time_ms = Calculate_sleep_time();
@@ -959,7 +964,7 @@ std::vector<Vec3> myAlgorithm::generate_waypoints_by_a_star(Vec3 start, Vec3 end
 
 
 // 官方原装的轨迹规划魔改版（复杂，有额外奖励）
-std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec3 start, Vec3 end,
+std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation_without_taking_off(Vec3 start, Vec3 end,
                                                                              DroneStatus drone) {
     double flying_height = my_drone_info[drone.drone_id].flying_height;
     int64_t flight_time;
@@ -983,7 +988,7 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
     p2.position = p2_pos;
 
     // p1.seg_type = 0;
-    p2.seg_type = 1;
+    p2.seg_type = 0;
 
     // 自己用一个恶心心的状态机，使用A*来做无冲突规划，如果中间没有障碍的话，应该这个值是空的
     std::vector<Vec3> flying_waypoints = generate_waypoints_by_a_star(start, end, drone);
@@ -1074,7 +1079,7 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
 }
 
 
-std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation_without_taking_off(Vec3 start, Vec3 end,
+std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec3 start, Vec3 end,
                                                                              DroneStatus drone) {
     double flying_height = my_drone_info[drone.drone_id].flying_height;
     int64_t flight_time;
