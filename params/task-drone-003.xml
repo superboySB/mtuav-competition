@@ -1,6 +1,0 @@
-<?xml version="1.0" ?>
-<root>
-  <agents number="1">
-    <agent id="0" start.x="3921" start.y="4582" goal.x="3935" goal.y="4595"/>
-  </agents>
-</root>

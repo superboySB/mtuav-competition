@@ -311,6 +311,7 @@ int64_t myAlgorithm::solve() {
                   << ", drone status: " << int(drone.status);
         LOG(INFO) << "cargo info:";
         for (auto c : drone.delivering_cargo_ids) LOG(INFO) << "delivering-c-id: " << c;
+        
         if(my_drone_info.find(drone.drone_id) == my_drone_info.end()){
             LOG(INFO) << "Now we do not use: " << drone.drone_id;
             continue;
@@ -318,22 +319,23 @@ int64_t myAlgorithm::solve() {
         else{
             for (auto c: my_drone_info[drone.drone_id].unfinished_cargo_ids) LOG(INFO) << "unfinished-c-id: " << c;
         }
-        
-        // 无人机状态为READY
-        if (drone.status == Status::READY) {
-            // 让有问题的飞机光荣退休
-            if ((drone.position==my_drone_info[drone.drone_id].target_break_position) && 
-                            (!my_drone_info[drone.drone_id].black_cargo_list.empty()) &&
-                            (!my_drone_info[drone.drone_id].has_sussessor)){
+
+        // 让有问题的飞机光荣退休
+        if (((drone.position==my_drone_info[drone.drone_id].target_break_position) && 
+                        (!my_drone_info[drone.drone_id].black_cargo_list.empty()))||(drone.status == Status::CRASH)){
+            if (!my_drone_info[drone.drone_id].has_sussessor){
                 my_drone_info[drone.drone_id].unfinished_cargo_ids.clear();
                 std::string new_drone_id = unused_drone_id.front();
                 my_drone_info[new_drone_id].flying_height = my_drone_info[drone.drone_id].flying_height;
                 my_drone_info[new_drone_id].static_grid = my_drone_info[drone.drone_id].static_grid;
+                drone.position==my_drone_info[drone.drone_id].target_break_position = drone.position;
                 my_drone_info[drone.drone_id].has_sussessor = true;
                 unused_drone_id.erase(unused_drone_id.begin());
-                continue;
             }
-
+        }
+        
+        // 无人机状态为READY
+        if (drone.status == Status::READY) {
             bool has_cargo = false;
             bool has_black = false;
             double current_weight = 0;
