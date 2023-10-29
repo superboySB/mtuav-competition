@@ -229,11 +229,12 @@ bool operator==(const Vec3& a, const Vec3& b) {
 }
 
 double roundUpToMultipleOf4(double num) {
-    if (std::fmod(num, 4) < 1e-6 ){
-        return num;
-    }else{
-        return std::ceil((num + 3.0) / 4.0) * 4.0;
-    }
+    return std::ceil((num + 3.0) / 4.0) * 4.0;
+    // if (std::fmod(num, 4) < 1e-6 ){
+    //     return num;
+    // }else{
+    //     return std::ceil((num + 3.0) / 4.0) * 4.0;
+    // }
 }
 
 // TODO 需要参赛选手自行设计求解算法
@@ -251,29 +252,29 @@ int64_t myAlgorithm::solve() {
         }
         // 帮助更新状态机中批量送外卖、已完成/再也不能送的外卖
         if (cargo.status == CargoStatus::CARGO_DELIVERED || cargo.status == CargoStatus::CARGO_FAILED){
-        for (auto& pair : my_drone_info) {
-            auto& unfinished_cargoes = pair.second.unfinished_cargo_ids;
+            for (auto& pair : my_drone_info) {
+                auto& unfinished_cargoes = pair.second.unfinished_cargo_ids;
 
-            // 计算要删除的元素数量（不包括-1）
-            int count_to_remove = std::count_if(unfinished_cargoes.begin(), unfinished_cargoes.end(),
-                                                [&cargo](int id) { return id == cargo.id; });
+                // 计算要删除的元素数量（不包括-1）
+                int count_to_remove = std::count_if(unfinished_cargoes.begin(), unfinished_cargoes.end(),
+                                                    [&cargo](int id) { return id == cargo.id; });
 
-            // 删除这些元素
-            auto it = std::remove_if(unfinished_cargoes.begin(), unfinished_cargoes.end(),
-                                    [&cargo](int id) { return id == cargo.id; });
-            unfinished_cargoes.erase(it, unfinished_cargoes.end());
+                // 删除这些元素
+                auto it = std::remove_if(unfinished_cargoes.begin(), unfinished_cargoes.end(),
+                                        [&cargo](int id) { return id == cargo.id; });
+                unfinished_cargoes.erase(it, unfinished_cargoes.end());
 
-            // 添加相应数量的-1以保持列表长度为3
-            for (int i = 0; i < count_to_remove; ++i) {
-                unfinished_cargoes.push_back(-1);
-            }
+                // 添加相应数量的-1以保持列表长度为3
+                for (int i = 0; i < count_to_remove; ++i) {
+                    unfinished_cargoes.push_back(-1);
+                }
 
-            // 如果列表长度小于3，则添加更多的-1
-            while (unfinished_cargoes.size() < 3) {
-                unfinished_cargoes.push_back(-1);
+                // 如果列表长度小于3，则添加更多的-1
+                while (unfinished_cargoes.size() < 3) {
+                    unfinished_cargoes.push_back(-1);
+                }
             }
         }
-    }
         // TODO 依据订单信息定制化特殊操作
         // 太危险的订单是不是可以不接
     }
@@ -283,6 +284,7 @@ int64_t myAlgorithm::solve() {
     // 处理无人机信息，找出当前未装载货物的无人机集合
     std::vector<DroneStatus> drones_to_pick;
     std::vector<DroneStatus> drones_need_recharge;
+    std::vector<DroneStatus> drones_need_break;
     std::vector<DroneStatus> drones_to_delivery;
     std::vector<DroneStatus> drones_to_hover;
     
@@ -304,17 +306,45 @@ int64_t myAlgorithm::solve() {
         if (drone.status == Status::READY) {
             bool has_cargo = false;
             double current_weight = 0;
-            for (auto cid : drone.delivering_cargo_ids) {
+            auto tmp_delivering_cargo_ids= drone.delivering_cargo_ids;
+            auto tmp_unfinished_cargo_ids= my_drone_info[drone.drone_id].unfinished_cargo_ids;
+            // 循环查找并删除元素
+            for (const auto& element_to_remove: my_drone_info[drone.drone_id].black_cargo_list) {
+                // 循环查找并删除元素
+                auto it = std::find(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), element_to_remove);
+                while (it != tmp_delivering_cargo_ids.end()) {
+                    // 删除元素
+                    tmp_delivering_cargo_ids.erase(it);
+
+                    // 在向量末尾添加-1
+                    tmp_delivering_cargo_ids.push_back(-1);
+
+                    // 重新查找元素
+                    it = std::find(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), element_to_remove);
+                }
+
+                auto it = std::find(tmp_unfinished_cargo_ids.begin(), tmp_unfinished_cargo_ids.end(), element_to_remove);
+                while (it != tmp_unfinished_cargo_ids.end()) {
+                    // 删除元素
+                    tmp_unfinished_cargo_ids.erase(it);
+
+                    // 在向量末尾添加-1
+                    tmp_unfinished_cargo_ids.push_back(-1);
+
+                    // 重新查找元素
+                    it = std::find(tmp_unfinished_cargo_ids.begin(), tmp_unfinished_cargo_ids.end(), element_to_remove);
+                }
+            }
+
+            std::sort(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), std::greater<>()); // 从大到小排序
+            std::sort(tmp_unfinished_cargo_ids.begin(), tmp_unfinished_cargo_ids.end(), std::greater<>()); // 从大到小排序
+
+
+            for (auto cid : drone.tmp_delivering_cargo_ids) {
                 // LOG(INFO) << "cid = " << cid;
                 if (cid != -1) {
                     LOG(INFO) << "has cargo = true";
                     has_cargo = true;
-                    auto blacklist =  my_drone_info[drone.drone_id].black_cargo_list;
-                    auto it = std::find(blacklist.begin(), blacklist.end(), cid);
-                    if (it != blacklist.end()){
-                        auto the_cargo = this->_cargo_info.at(cid);
-                        current_weight += the_cargo.weight;
-                    }
                 }
             }
 
@@ -325,7 +355,7 @@ int64_t myAlgorithm::solve() {
                 my_drone_info[drone.drone_id].target_station_position.z=-1;
             }
 
-            if (areAllElementsMinusOne(my_drone_info[drone.drone_id].unfinished_cargo_ids)) { 
+            if (areAllElementsMinusOne(tmp_unfinished_cargo_ids)) { 
                 if (drone.battery < 50) {
                     drones_need_recharge.push_back(drone);  // 注意优先去充电
                 }
@@ -336,8 +366,8 @@ int64_t myAlgorithm::solve() {
 
                     
                     for (const auto& pair : my_drone_info) {
-                        // 不用检验自己这一架
-                        if (pair.first == drone.drone_id) continue;
+                        // 自己这一架先试试看能不能躲掉黑名单cargo
+                        // if (pair.first == drone.drone_id) continue;
 
                         // 删掉已经被其它飞机接单的cargo
                         removeAcceptedCargoes(cargoes_to_delivery_and_no_accepted, pair.second.unfinished_cargo_ids);
@@ -382,28 +412,7 @@ int64_t myAlgorithm::solve() {
                 }    
             } 
             else {
-                auto tmp_delivering_cargo_ids= drone.delivering_cargo_ids;
-                // 循环查找并删除元素
-                for (const auto& element_to_remove: my_drone_info[drone.drone_id].black_cargo_list) {
-                    // 循环查找并删除元素
-                    auto it = std::find(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), element_to_remove);
-                    while (it != tmp_delivering_cargo_ids.end()) {
-                        // 删除元素
-                        tmp_delivering_cargo_ids.erase(it);
-
-                        // 在向量末尾添加-1
-                        tmp_delivering_cargo_ids.push_back(-1);
-
-                        // 重新查找元素
-                        it = std::find(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), element_to_remove);
-                    }
-                }
-
-                auto& unfinished_cargo_ids= my_drone_info[drone.drone_id].unfinished_cargo_ids;
-                std::sort(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), std::greater<>()); // 从大到小排序
-                std::sort(unfinished_cargo_ids.begin(), unfinished_cargo_ids.end(), std::greater<>()); // 从大到小排序
-
-                if (tmp_delivering_cargo_ids != unfinished_cargo_ids){
+                if (tmp_delivering_cargo_ids != tmp_unfinished_cargo_ids){
                     drones_to_pick.push_back(drone); // 没有取到所有货物，先取货物 
                 }
                 else{
@@ -419,7 +428,8 @@ int64_t myAlgorithm::solve() {
     LOG(INFO) << "drone info size: " << this->_drone_info.size()
               << ", drones to pick cargo: size: " << drones_to_pick.size()
               << ", drones to delivery size: " << drones_to_delivery.size()
-              << ", drones need recharge size: " << drones_need_recharge.size();
+              << ", drones need recharge size: " << drones_need_recharge.size()
+              << ", drones need take break size: " << drones_need_break.size();
     LOG(INFO) << "drones to pick cargo: ";
     for (auto d : drones_to_pick) {
         LOG(INFO) << d.drone_id;
@@ -434,6 +444,11 @@ int64_t myAlgorithm::solve() {
     for (auto d : drones_need_recharge) {
         LOG(INFO) << d.drone_id;
     }
+
+    LOG(INFO) << "drones need take break: ";
+    for (auto d : drones_need_break) {
+        LOG(INFO) << d.drone_id;
+    }
     // 获取当前毫秒时间戳
     std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp =
         std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
@@ -445,11 +460,12 @@ int64_t myAlgorithm::solve() {
     //////////////////////////////////////////////////////////////////////////////////////////////////
     // 无人机与订单进行匹配，并生成飞行轨迹
     //////////////////////////////////////////////////////////////////////////////////////////////////
-    // 示例策略1：为没有订单的无人机生成取订单航线
+    // 策略1：为没有订单的无人机生成取订单航线
     // 取无人机和订单数量较小的值
     for (auto the_drone : drones_to_pick) {
         CargoInfo the_cargo;
         auto tmp_delivering_cargo_ids= the_drone.delivering_cargo_ids;
+        auto tmp_unfinished_cargo_ids= my_drone_info[the_drone.drone_id].unfinished_cargo_ids;
         // 循环查找并删除元素
         for (const auto& element_to_remove: my_drone_info[the_drone.drone_id].black_cargo_list) {
             // 循环查找并删除元素
@@ -464,15 +480,27 @@ int64_t myAlgorithm::solve() {
                 // 重新查找元素
                 it = std::find(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), element_to_remove);
             }
+
+            // 循环查找并删除元素
+            auto it = std::find(tmp_unfinished_cargo_ids.begin(), tmp_unfinished_cargo_ids.end(), element_to_remove);
+            while (it != tmp_unfinished_cargo_ids.end()) {
+                // 删除元素
+                tmp_unfinished_cargo_ids.erase(it);
+
+                // 在向量末尾添加-1
+                tmp_unfinished_cargo_ids.push_back(-1);
+
+                // 重新查找元素
+                it = std::find(tmp_unfinished_cargo_ids.begin(), tmp_unfinished_cargo_ids.end(), element_to_remove);
+            }
         }
         
-        auto& unfinished_cargo_ids= my_drone_info[the_drone.drone_id].unfinished_cargo_ids;
 
         std::sort(tmp_delivering_cargo_ids.begin(), tmp_delivering_cargo_ids.end(), std::greater<>()); // 从大到小排序
-        std::sort(unfinished_cargo_ids.begin(), unfinished_cargo_ids.end(), std::greater<>()); // 从大到小排序
+        std::sort(tmp_unfinished_cargo_ids.begin(), tmp_unfinished_cargo_ids.end(), std::greater<>()); // 从大到小排序
         for (size_t j = 0; j < std::round(dl.max_cargo_slots); ++j) {
-            if (tmp_delivering_cargo_ids[j] != unfinished_cargo_ids[j]) {
-                int chosen_cargo_id = unfinished_cargo_ids[j];
+            if (tmp_delivering_cargo_ids[j] != tmp_unfinished_cargo_ids[j]) {
+                int chosen_cargo_id = tmp_unfinished_cargo_ids[j];
                 if (this->_cargo_info.find(chosen_cargo_id) != this->_cargo_info.end()) {
                     the_cargo = this->_cargo_info.at(chosen_cargo_id);
                 }
@@ -501,25 +529,31 @@ int64_t myAlgorithm::solve() {
         // 在下发飞行计划前，选手可以使用该函数自行先校验飞行计划的可行性
         auto reponse_pickup = this->_planner->ValidateFlightPlan(dl, pickup);
         LOG(INFO) << "ValidateFlightPlan, sussess: " << reponse_pickup.success << ", err msg: " << reponse_pickup.msg;
-        if (reponse_pickup.msg == "empty segments"){
-            the_cargo.position.z+=4;
-            auto& hold_up = my_drone_info[the_drone.drone_id].hold_up_cargo_list;
-            auto it = std::find(hold_up.begin(), hold_up.end(), the_cargo.id);
-            if (it == hold_up.end()) {
-                hold_up.push_back(the_cargo.id);
-            }
-            else{
-                LOG(INFO) << "Move to backlist: " << the_cargo.id;
+        if ((!reponse_pickup.success) || (reponse_pickup.msg == "empty segments")){
+            bool is_hold_up = true;  // 直接小黑屋，派遣新飞机
+            // for (const auto& pair : my_drone_info) {
+            //     auto& hold_up = pair.second.hold_up_cargo_list;
+            //     auto it = std::find(hold_up.begin(), hold_up.end(), the_cargo.id);
+            //     if (it != hold_up.end()) {
+            //         is_hold_up = true;
+            //         break;
+            //     }
+            // }
+            if (!is_hold_up){
+                the_cargo.position.z+=4;
+                my_drone_info[the_drone.drone_id].hold_up_cargo_list.push_back(the_cargo.id);
+            } else {
+                LOG(INFO) << "Move to blacklist: " << the_cargo.id;
                 my_drone_info[the_drone.drone_id].black_cargo_list.push_back(the_cargo.id);
-                auto& unfinished_order = my_drone_info[the_drone.drone_id].unfinished_cargo_ids;
-                auto it_remove = std::find(unfinished_order.begin(), unfinished_order.end(), the_cargo.id);
-                if (it_remove != unfinished_order.end()) {
-                    // 删除元素
-                    unfinished_order.erase(it_remove);
-                    // 在向量末尾添加-1
-                    unfinished_order.push_back(-1);
-                }
-            }
+                // auto& unfinished_order = my_drone_info[the_drone.drone_id].unfinished_cargo_ids;
+                // auto it_remove = std::find(unfinished_order.begin(), unfinished_order.end(), the_cargo.id);
+                // if (it_remove != unfinished_order.end()) {
+                //     // 删除元素
+                //     unfinished_order.erase(it_remove);
+                //     // 在向量末尾添加-1
+                //     unfinished_order.push_back(-1);
+                // }
+            }        
         }
 
         // 注意ValidateFlightPlan 只能校验起点/终点均在地面上的飞行计划
@@ -534,7 +568,7 @@ int64_t myAlgorithm::solve() {
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
-    // 示例策略2：为已经取货的飞机生成送货飞行计划
+    // 策略2：为已经取货的飞机生成送货飞行计划
     for (auto the_drone : drones_to_delivery) {
         int the_cargo_id = 0;
         // 找到货仓中第一个id不为-1的货物
@@ -590,25 +624,32 @@ int64_t myAlgorithm::solve() {
             // 在下发飞行计划前，选手可以使用该函数自行先校验飞行计划的可行性
             auto reponse_delivery = this->_planner->ValidateFlightPlan(dl, delivery);
             LOG(INFO) << "ValidateFlightPlan, sussess: " << reponse_delivery.success <<", err msg: " << reponse_delivery.msg;
-            if (reponse_delivery.msg == "empty segments"){
-                the_cargo.target_position.z+=4;
-                auto& hold_up = my_drone_info[the_drone.drone_id].hold_up_cargo_list;
-                auto it = std::find(hold_up.begin(), hold_up.end(), the_cargo.id);
-                if (it == hold_up.end()) {
-                    hold_up.push_back(the_cargo.id);
-                }
-                else{
-                    LOG(INFO) << "Move to backlist: " << the_cargo.id;
+            if ((!reponse_delivery.success)||(reponse_delivery.msg == "empty segments")){
+                bool is_hold_up = true; // 直接小黑屋，派遣新飞机
+                // for (const auto& pair : my_drone_info) {
+                //     auto hold_up = pair.second.hold_up_cargo_list;
+                //     auto it = std::find(hold_up.begin(), hold_up.end(), the_cargo.id);
+
+                //     if (it != hold_up.end()) {
+                //         is_hold_up = true;
+                //         break;
+                //     }
+                // }
+                if (!is_hold_up){
+                    the_cargo.target_position.z+=4;
+                    my_drone_info[the_drone.drone_id].hold_up_cargo_list.push_back(the_cargo.id);
+                } else {
+                    LOG(INFO) << "Move to blacklist: " << the_cargo.id;
                     my_drone_info[the_drone.drone_id].black_cargo_list.push_back(the_cargo.id);
-                    auto& unfinished_order = my_drone_info[the_drone.drone_id].unfinished_cargo_ids;
-                    auto it_remove = std::find(unfinished_order.begin(), unfinished_order.end(), the_cargo.id);
-                    if (it_remove != unfinished_order.end()) {
-                        // 删除元素
-                        unfinished_order.erase(it_remove);
-                        // 在向量末尾添加-1
-                        unfinished_order.push_back(-1);
-                    }
-                }
+                    // auto& unfinished_order = my_drone_info[the_drone.drone_id].unfinished_cargo_ids;
+                    // auto it_remove = std::find(unfinished_order.begin(), unfinished_order.end(), the_cargo.id);
+                    // if (it_remove != unfinished_order.end()) {
+                    //     // 删除元素
+                    //     unfinished_order.erase(it_remove);
+                    //     // 在向量末尾添加-1
+                    //     unfinished_order.push_back(-1);
+                    // }
+                } 
             }
             // 注意ValidateFlightPlan 只能校验起点/终点均在地面上的飞行计划
             flight_plans_to_publish.push_back({the_drone.drone_id, delivery});
@@ -623,7 +664,7 @@ int64_t myAlgorithm::solve() {
 
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
-    // 示例策略3：为电量小于指定数值的无人机生成换电航线
+    // 策略3：为电量小于指定数值的无人机生成换电航线
     for (auto the_drone : drones_need_recharge) {
         auto all_battery_stations = this->_task_info->battery_stations;
         std::vector<Vec3> available_battery_stations;
@@ -703,6 +744,89 @@ int64_t myAlgorithm::solve() {
         // break;  // 每次只生成一条换电飞行计划
     }
 
+
+    //////////////////////////////////////////////////////////////////////////////////////////////////
+    // 策略4：将一直飞不起来的飞机放在临时停靠站
+    for (auto the_drone : drones_need_break) {
+        auto all_break_positions = this->_task_info->landing_positions;
+        std::vector<Vec3> available_break_positions;
+        for (const auto& station : all_break_positions) {
+            bool occupy_flag = false;
+            for (const auto& pair : my_drone_info) {
+                auto target = pair.second.target_break_position;
+                if (target == station) {
+                    LOG(INFO) << "Break Station occupied";
+                    occupy_flag = true;
+                    break;
+                }
+            }
+            if (!occupy_flag){
+                available_break_positions.push_back(station);
+            }
+        }
+        
+        // 没有换电站，无法执行换电操作
+        if (available_break_positions.size() == 0) {
+            LOG(INFO) << "there is no break station. ";
+            break;
+        }
+        // 依据距离当前无人机的具体排序
+        std::sort(available_break_positions.begin(), available_break_positions.end(), [the_drone](Vec3 p1, Vec3 p2) {
+            Vec3 the_drone_pos = the_drone.position;
+            double p1_to_drone = std::sqrt(std::pow(p1.x - the_drone_pos.x, 2) +
+                                           std::pow(p1.y - the_drone_pos.y, 2) +
+                                           std::pow(p1.z - the_drone_pos.z, 2));
+            double p2_to_drone = std::sqrt(std::pow(p2.x - the_drone_pos.x, 2) +
+                                           std::pow(p2.y - the_drone_pos.y, 2) +
+                                           std::pow(p2.z - the_drone_pos.z, 2));
+            return p1_to_drone < p2_to_drone;
+        });
+        // 选择距离当前无人机最近的换电站
+        int the_station_idx = 0;
+        // 依次选择换电站
+        Vec3 the_selected_station;
+        if (the_station_idx < available_break_positions.size()) {
+            the_selected_station = available_break_positions.at(the_station_idx);
+            my_drone_info[the_drone.drone_id].target_break_position = the_selected_station;
+        } else {
+            continue;   // 没有可用的话，就保持ready继续等待有充电站可以用吧，理论上是1000ms充满，检验状态机判定是否准确
+        }
+
+        auto landing_position = the_selected_station;
+        landing_position.z = roundUpToMultipleOf4(the_selected_station.z);
+
+        LOG(INFO) << "go to break station, position: " << the_selected_station.x
+                  << " " << the_selected_station.y << " " << the_selected_station.z
+                  << ", current uav position:" << the_drone.position.x << " " << the_drone.position.y << " " << the_drone.position.z
+                  << ", current landing position:" << landing_position.x << " " << landing_position.y << " " << landing_position.z;  
+
+        FlightPlan take_break;
+        // TODO 参赛选手需要自己实现一个轨迹生成函数或中转点生成函数
+        auto [take_break_traj, take_break_flight_time] = this->trajectory_generation(
+            the_drone.position, landing_position, the_drone);  //此处使用轨迹生成函数
+        take_break.flight_purpose = FlightPurpose::FLIGHT_COMMON;
+        take_break.flight_plan_type = FlightPlanType::PLAN_TRAJECTORIES;
+        take_break.flight_id = std::to_string(++Algorithm::flightplan_num);
+        take_break.takeoff_timestamp = current_time;  // 立刻起飞
+        take_break.segments = take_break_traj;
+        // 在下发飞行计划前，选手可以使用该函数自行先校验飞行计划的可行性
+        auto reponse_take_break = this->_planner->ValidateFlightPlan(dl, take_break);
+        LOG(INFO) << "ValidateFlightPlan, sussess: " << reponse_take_break.success<<", err msg: " << reponse_take_break.msg;
+        // 注意ValidateFlightPlan 只能校验起点/终点均在地面上的飞行计划
+        flight_plans_to_publish.push_back({the_drone.drone_id, take_break});
+        if (!take_break_traj.empty()) {
+            LOG(INFO) << "first point z: " << take_break_traj.front().position.z;
+        } else {
+            LOG(WARNING) << "take_break_traj is empty!";
+        }
+        LOG(INFO) << "Successfully generated flight plan, flight id: " << take_break.flight_id
+                  << ", drone id: " << the_drone.drone_id
+                  << ", flight purpose: " << int(take_break.flight_purpose)
+                  << ", flight type: " << int(take_break.flight_plan_type) << ", cargo id: none";
+        // break;  // 每次只生成一条换电飞行计划
+    }
+
+
     // 下发所求出的飞行计划
     for (auto& [drone_id, flightplan] : flight_plans_to_publish) {
         auto publish_result = this->_planner->DronePlanFlight(drone_id, flightplan);
@@ -720,7 +844,7 @@ int64_t myAlgorithm::solve() {
     // }
 
     // 根据算法计算情况，得出下一轮的算法调用间隔，单位ms
-    int64_t sleep_time_ms = 5000;
+    int64_t sleep_time_ms = 10000;
 
     // 依据需求计算所需的sleep time
     // sleep_time_ms = Calculate_sleep_time();

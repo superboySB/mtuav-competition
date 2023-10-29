@@ -28,7 +28,13 @@ void sigint_handler(int sig) {
 
 void initialize_my_drone_info(std::unordered_map<std::string, MyDroneInfo>& my_drone_info, 
         std::shared_ptr<Map> map, float map_min_x, float map_max_x, float map_min_y, 
-        float map_max_y, float map_min_z, float map_max_z) {
+        float map_max_y, float map_min_z, float map_max_z, std::vector<std::string> unused_drone_id) {
+
+    for (int i = 7; i <= 25; ++i) {
+        std::ostringstream os;
+        os << "drone-" << std::setfill('0') << std::setw(3) << i;
+        unused_drone_id.push_back(os.str());
+    }
     my_drone_info["drone-001"].flying_height = 70;
     my_drone_info["drone-002"].flying_height = 80;
     my_drone_info["drone-003"].flying_height = 90;
@@ -116,7 +122,7 @@ int main(int argc, const char* argv[]) {
         LOG(INFO) << "Login successfully";
     }
 
-    // std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
     int task_num = planner->GetTaskCount();
     LOG(INFO) << "Task num: " << task_num;
     // TODO 选手指定比赛任务索引
@@ -148,7 +154,7 @@ int main(int argc, const char* argv[]) {
                 &alg->map_min_y, &alg->map_max_y, 
                 &alg->map_min_z, &alg->map_max_z);
     initialize_my_drone_info(alg->my_drone_info, map, alg->map_min_x, alg->map_max_x, alg->map_min_y, 
-                alg->map_max_y, alg->map_min_z, alg->map_max_z);
+                alg->map_max_y, alg->map_min_z, alg->map_max_z, alg->unused_drone_id);
     // 将地图指针传入算法实例
     alg->set_map_info(map);
     // 将任务指针传入算法实例

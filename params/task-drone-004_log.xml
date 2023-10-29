@@ -1,3 +1,17 @@
 <?xml version="1.0" ?>
 <root>
+    <log>
+        <taskfilename>/workspace/mtuav-competition/params/task-drone-004.xml</taskfilename>
+        <mapfilename>/workspace/mtuav-competition/params/map-drone-004.xml</mapfilename>
+        <configfilename>/workspace/mtuav-competition/params/config.xml</configfilename>
+        <summary runtime="0.89490902" tries="1" agentssolved="1 (100.000000%)" flowtime="758.50165" makespan="758.50165"/>
+        <agent id="0" start.x="60" start.y="0" goal.x="664" goal.y="373" size="0.050000001" movespeed="1" rotationspeed="1">
+            <path pathfound="true" runtime="0.155737" duration="758.50165">
+                <section id="0" start.x="60" start.y="0" goal.x="199" goal.y="139" duration="196.57568"/>
+                <section id="1" start.x="199" start.y="139" goal.x="220" goal.y="139" duration="21"/>
+                <section id="2" start.x="220" start.y="139" goal.x="454" goal.y="373" duration="330.92596"/>
+                <section id="3" start.x="454" start.y="373" goal.x="664" goal.y="373" duration="210"/>
+            </path>
+        </agent>
+    </log>
 </root>

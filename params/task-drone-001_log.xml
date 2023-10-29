@@ -4,15 +4,13 @@
         <taskfilename>/workspace/mtuav-competition/params/task-drone-001.xml</taskfilename>
         <mapfilename>/workspace/mtuav-competition/params/map-drone-001.xml</mapfilename>
         <configfilename>/workspace/mtuav-competition/params/config.xml</configfilename>
-        <summary runtime="1.722742" tries="1" agentssolved="1 (100.000000%)" flowtime="823.94739" makespan="823.94739"/>
-        <agent id="0" start.x="736" start.y="1176" goal.x="1322" goal.y="627" size="0.050000001" movespeed="1" rotationspeed="1">
-            <path pathfound="true" runtime="0.962942" duration="823.94739">
-                <section id="0" start.x="736" start.y="1176" goal.x="1023" goal.y="889" duration="405.8793"/>
-                <section id="1" start.x="1023" start.y="889" goal.x="1023" goal.y="879" duration="10"/>
-                <section id="2" start.x="1023" start.y="879" goal.x="1027" goal.y="875" duration="5.6568542"/>
-                <section id="3" start.x="1027" start.y="875" goal.x="1027" goal.y="867" duration="8"/>
-                <section id="4" start.x="1027" start.y="867" goal.x="1267" goal.y="627" duration="339.41125"/>
-                <section id="5" start.x="1267" start.y="627" goal.x="1322" goal.y="627" duration="55"/>
+        <summary runtime="0.95025897" tries="1" agentssolved="1 (100.000000%)" flowtime="846.28845" makespan="846.28845"/>
+        <agent id="0" start.x="0" start.y="0" goal.x="698" goal.y="358" size="0.050000001" movespeed="1" rotationspeed="1">
+            <path pathfound="true" runtime="0.17315701" duration="846.28845">
+                <section id="0" start.x="0" start.y="0" goal.x="131" goal.y="131" duration="185.26198"/>
+                <section id="1" start.x="131" start.y="131" goal.x="224" goal.y="131" duration="93"/>
+                <section id="2" start.x="224" start.y="131" goal.x="451" goal.y="358" duration="321.02649"/>
+                <section id="3" start.x="451" start.y="358" goal.x="698" goal.y="358" duration="247"/>
             </path>
         </agent>
     </log>

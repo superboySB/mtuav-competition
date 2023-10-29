@@ -102,10 +102,10 @@ enum FlightPlanType {
   PLAN_TRAJECTORIES = 1,
 };
 
- // 理论上静态航线+时间戳=要执行的航线，可以根据目标时间戳生成flight_id
+// 理论上静态航线+时间戳=要执行的航线，可以根据目标时间戳生成flight_id
  // 目前这个id只用来防止重复执行。任务执行完成，要根据飞机的状态来判断。
  // 要改变原来的飞行计划，必须用新的id。
-typedef struct FlightPlan { 
+typedef struct FlightPlan {
   // 飞行计划类型：航点/轨迹
   FlightPlanType flight_plan_type;
   // 此飞行计划的目的：换电/取货/送货

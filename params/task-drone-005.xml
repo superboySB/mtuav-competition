@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <root>
   <agents number="1">
-    <agent id="0" start.x="1132" start.y="642" goal.x="860" goal.y="489"/>
+    <agent id="0" start.x="80" start.y="0" goal.x="691" goal.y="374"/>
   </agents>
 </root>

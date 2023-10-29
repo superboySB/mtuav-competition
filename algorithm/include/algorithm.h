@@ -28,12 +28,13 @@ struct MyDroneInfo {
     Vec3 start_position; // 目前尝试：保证飞机间起点终点在空间上完全无冲突
     Vec3 end_position;
     Vec3 target_station_position;
+    Vec3 target_break_position;
 
     std::vector<mtuav::Segment> path_segs;  // TODO: 后续准备尝试插入悬停段，实现时空上完全无冲突
     int current_seg_id;
 
     // 构造函数
-    MyDroneInfo() : flying_height(120), unfinished_cargo_ids({-1, -1, -1}) {
+    MyDroneInfo() : flying_height(120), current_weight(0), unfinished_cargo_ids({-1, -1, -1}) {
         start_position.x = -1;
         start_position.y = -1;
         start_position.z = -1;
@@ -45,6 +46,10 @@ struct MyDroneInfo {
         target_station_position.x = -1;
         target_station_position.y = -1;
         target_station_position.z = -1;
+
+        target_break_position.x = -1;
+        target_break_position.y = -1;
+        target_break_position.z = -1;
     }
 };
 
@@ -98,6 +103,7 @@ class myAlgorithm : public Algorithm {
     std::string segments_to_string(std::vector<Segment> segs);
 
     float map_min_x, map_max_x, map_min_y, map_max_y, map_min_z, map_max_z;
+    std::vector<std::string> unused_drone_id;
     std::unordered_map<std::string, MyDroneInfo> my_drone_info; 
     std::vector<Vec3> generate_waypoints_by_a_star(Vec3 start, Vec3 end, DroneStatus drone);  
 };
