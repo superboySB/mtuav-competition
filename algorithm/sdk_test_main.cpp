@@ -29,18 +29,51 @@ void sigint_handler(int sig) {
 void initialize_my_drone_info(std::unordered_map<std::string, MyDroneInfo>& my_drone_info, 
         std::shared_ptr<Map> map, float map_min_x, float map_max_x, float map_min_y, 
         float map_max_y, float map_min_z, float map_max_z, std::vector<std::string>& unused_drone_id) {
-
+    
+    // 当前方案 *****
     for (int i = 7; i <= 25; ++i) {
         std::ostringstream os;
         os << "drone-" << std::setfill('0') << std::setw(3) << i;
         unused_drone_id.push_back(os.str());
     }
-    my_drone_info["drone-001"].flying_height = 70;
-    my_drone_info["drone-002"].flying_height = 80;
-    my_drone_info["drone-003"].flying_height = 90;
+    // my_drone_info["drone-001"].flying_height = 70;
+    // my_drone_info["drone-002"].flying_height = 80;
+    // my_drone_info["drone-003"].flying_height = 90;
     my_drone_info["drone-004"].flying_height = 100;
     my_drone_info["drone-005"].flying_height = 110;
     my_drone_info["drone-006"].flying_height = 120;
+
+    // 终极备选（狂轰乱炸）
+    // for (int i = 25; i <= 25; ++i) {
+    //     std::ostringstream os;
+    //     os << "drone-" << std::setfill('0') << std::setw(3) << i;
+    //     unused_drone_id.push_back(os.str());
+    // }
+    // my_drone_info["drone-001"].flying_height = 70;
+    // my_drone_info["drone-002"].flying_height = 70;
+    // my_drone_info["drone-003"].flying_height = 70;
+    // my_drone_info["drone-004"].flying_height = 70;
+    // my_drone_info["drone-005"].flying_height = 80;
+    // my_drone_info["drone-006"].flying_height = 80;
+    // my_drone_info["drone-007"].flying_height = 80;
+    // my_drone_info["drone-008"].flying_height = 80;
+    // my_drone_info["drone-009"].flying_height = 90;
+    // my_drone_info["drone-010"].flying_height = 90;
+    // my_drone_info["drone-011"].flying_height = 90;
+    // my_drone_info["drone-012"].flying_height = 90;
+    // my_drone_info["drone-013"].flying_height = 100;
+    // my_drone_info["drone-014"].flying_height = 100;
+    // my_drone_info["drone-015"].flying_height = 100;
+    // my_drone_info["drone-016"].flying_height = 100;
+    // my_drone_info["drone-017"].flying_height = 110;
+    // my_drone_info["drone-018"].flying_height = 110;
+    // my_drone_info["drone-019"].flying_height = 110;
+    // my_drone_info["drone-020"].flying_height = 110;
+    // my_drone_info["drone-021"].flying_height = 120;
+    // my_drone_info["drone-022"].flying_height = 120;
+    // my_drone_info["drone-023"].flying_height = 120;
+    // my_drone_info["drone-024"].flying_height = 120;
+    // 终极备选（狂轰乱炸）
 
     // Iterate through the map to get all the keys
     for (const auto& pair : my_drone_info) {
@@ -57,7 +90,7 @@ void initialize_my_drone_info(std::unordered_map<std::string, MyDroneInfo>& my_d
                     int ix = (x - map_min_x) / step;
                     int iy = (y - map_min_y) / step;
                     // Use the distance value to set the grid cell value
-                    if (voxel->distance <= 4) {
+                    if (voxel->distance < 4) {
                         grid[iy][ix] = 1;
                     } else {
                         grid[iy][ix] = 0;
@@ -92,11 +125,11 @@ int main(int argc, const char* argv[]) {
 
     // 配置本地路径读取地图信息
     // 用于单机版镜像
-    auto map = mtuav::Map::CreateMapFromFile(
-        "/workspace/mtuav-competition/map/test_map.bin");
-    // 用于在线比赛系统
     // auto map = mtuav::Map::CreateMapFromFile(
-    //     "/workspace/mtuav-competition/map/competition_map.bin");
+    //     "/workspace/mtuav-competition/map/test_map.bin");
+    // 用于在线比赛系统
+    auto map = mtuav::Map::CreateMapFromFile(
+        "/workspace/mtuav-competition/map/competition_map.bin");
     
     // 声明一个planner指针
     std::shared_ptr<Planner> planner = std::make_shared<Planner>(map);
@@ -109,11 +142,11 @@ int main(int argc, const char* argv[]) {
     }
 
     // 下面使用测试账号仅用于登录单机版镜像
-    mtuav::Response r =
-        planner->Login("801f0ff5-5359-4c3e-99d4-f05d7eb47423", "e57aab02cf1f7433d7bf385748376164");
-    // 下面使用测试账号仅用于登录在线比赛系统
     // mtuav::Response r =
-    //     planner->Login("b87560ef-1f81-4545-948e-2b445544eb83", "aa855fbc9c433422d69584581d4a69c4");
+    //     planner->Login("801f0ff5-5359-4c3e-99d4-f05d7eb47423", "e57aab02cf1f7433d7bf385748376164");
+    // 下面使用测试账号仅用于登录在线比赛系统
+    mtuav::Response r =
+        planner->Login("b87560ef-1f81-4545-948e-2b445544eb83", "aa855fbc9c433422d69584581d4a69c4");
 
     if (r.success == false) {
         LOG(INFO) << "Login failed, msg: " << r.msg;

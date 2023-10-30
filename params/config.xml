@@ -6,7 +6,7 @@
 		<rescheduling>rulebased</rescheduling>
 		<startsafeinterval>0</startsafeinterval>
 		<prioritization>fifo</prioritization>
-		<timelimit>300</timelimit>
+		<timelimit>30</timelimit>
 		<planforturns>false</planforturns>
 		<waitbeforemove>0</waitbeforemove>
 	</algorithm>

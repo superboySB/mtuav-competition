@@ -35,8 +35,10 @@ struct MyDroneInfo {
     std::vector<mtuav::Segment> path_segs;  // TODO: 后续准备尝试插入悬停段，实现时空上完全无冲突
     int current_seg_id;
 
-    // 构造函数
-    MyDroneInfo() : flying_height(120), has_sussessor(false), unfinished_cargo_ids({-1, -1, -1}) {
+    // 构造函数，可以考虑预置黑名单
+    // black_cargo_list({41,337,79,187})
+    MyDroneInfo() : flying_height(120), has_sussessor(false), unfinished_cargo_ids({-1, -1, -1})
+       {
         target_station_position.x = -1;
         target_station_position.y = -1;
         target_station_position.z = -1;
