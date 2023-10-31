@@ -36,12 +36,19 @@ void initialize_my_drone_info(std::unordered_map<std::string, MyDroneInfo>& my_d
         os << "drone-" << std::setfill('0') << std::setw(3) << i;
         unused_drone_id.push_back(os.str());
     }
-    // my_drone_info["drone-001"].flying_height = 70;
-    // my_drone_info["drone-002"].flying_height = 80;
-    // my_drone_info["drone-003"].flying_height = 90;
+    my_drone_info["drone-001"].flying_height = 70;
+    my_drone_info["drone-002"].flying_height = 80;
+    my_drone_info["drone-003"].flying_height = 90;
     my_drone_info["drone-004"].flying_height = 100;
     my_drone_info["drone-005"].flying_height = 110;
     my_drone_info["drone-006"].flying_height = 120;
+
+    my_drone_info["drone-001"].init_start_from_station_index = 1;
+    my_drone_info["drone-002"].init_start_from_station_index = 2;
+    my_drone_info["drone-003"].init_start_from_station_index = 3;
+    my_drone_info["drone-004"].init_start_from_station_index = 5;
+    my_drone_info["drone-005"].init_start_from_station_index = 0;
+    my_drone_info["drone-006"].init_start_from_station_index = 4;
 
     // 终极备选（狂轰乱炸）
     // for (int i = 25; i <= 25; ++i) {
@@ -90,7 +97,7 @@ void initialize_my_drone_info(std::unordered_map<std::string, MyDroneInfo>& my_d
                     int ix = (x - map_min_x) / step;
                     int iy = (y - map_min_y) / step;
                     // Use the distance value to set the grid cell value
-                    if (voxel->distance < 4) {
+                    if (voxel->distance <= 4) {
                         grid[iy][ix] = 1;
                     } else {
                         grid[iy][ix] = 0;
@@ -192,6 +199,7 @@ int main(int argc, const char* argv[]) {
     alg->set_map_info(map);
     // 将任务指针传入算法实例
     alg->set_task_info(std::move(task));
+
     // 将planner指针传入算法实例
     alg->set_planner(planner);
     LOG(INFO) << "An instance of contestant's algorihtm class is created. ";
@@ -204,6 +212,7 @@ int main(int argc, const char* argv[]) {
     } else {
         LOG(INFO) << "Start task successfully, task index: " << task_idx;
     }
+    bool init_flag = false;
     while (!dynamic_info->get_task_stop_flag()) {
         if (task_stop == true) {
             planner->StopTask();
@@ -215,6 +224,23 @@ int main(int argc, const char* argv[]) {
         // 调用算法类求解前，先更获取最新的动态信息
         alg->update_dynamic_info();
         LOG(INFO) << "The latest dynamic info has been fetched. ";
+        
+        if (!init_flag){
+            auto& battery_station_positions = alg->_task_info->battery_stations;
+            for (std::size_t i = 0; i < battery_station_positions.size(); ++i) {
+                const Vec3& station = battery_station_positions[i];
+                LOG(INFO) << "battery_stations " << i << ": x = " << station.x 
+                        << ", y = " << station.y << ", z = " << station.z;
+            }
+
+            auto& landing_positions = alg->_task_info->landing_positions;
+            for (std::size_t i = 0; i < landing_positions.size(); ++i) {
+                const Vec3& station = landing_positions[i];
+                LOG(INFO) << "landing_stations " << i << ": x = " << station.x 
+                        << ", y = " << station.y << ", z = " << station.z;
+            }
+            init_flag = true;
+        }
         
         // [核心]
         // 调用算法求解函数，solve函数内内部输出飞行计划,返回值为下次调用算法求解间隔（毫秒）

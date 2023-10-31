@@ -19,41 +19,36 @@ using cargoes_info = std::map<int, mtuav::CargoInfo>;
 
 // 用于表示我想飞的无人机的信息
 struct MyDroneInfo {
+    bool has_init;
+    bool has_sussessor;
+    int init_start_from_station_index;
+    int drone_status;
+    double drone_battery;
     double flying_height;
+
     std::vector<std::vector<int>> static_grid;
     std::vector<int> unfinished_cargo_ids;
-
-    // std::vector<int> hold_up_cargo_list;
     std::vector<int> black_cargo_list;
-    bool has_sussessor;
     
-    Vec3 target_station_position;
-    Vec3 target_break_position;
-
-    // Vec3 start_position; // 目前尝试：保证飞机间起点终点在空间上完全无冲突
-    // Vec3 end_position;
-    std::vector<mtuav::Segment> path_segs;  // TODO: 后续准备尝试插入悬停段，实现时空上完全无冲突
-    int current_seg_id;
+    Vec3 drone_position;
+    Vec3 target_break_position;  // TODO：还不清楚怎么用
+    Vec3 target_charging_position;
+    // double next_flight_time;
+    // std::vector<mtuav::Segment> path_segs;  // TODO: 后续准备尝试插入悬停段，实现时空上完全无冲突
+    // int current_seg_id;
 
     // 构造函数，可以考虑预置黑名单
     // black_cargo_list({41,337,79,187})
-    MyDroneInfo() : flying_height(120), has_sussessor(false), unfinished_cargo_ids({-1, -1, -1})
+    MyDroneInfo() : flying_height(120), has_sussessor(false), drone_battery(100), 
+        has_init(false), unfinished_cargo_ids({-1, -1, -1})
        {
-        target_station_position.x = -1;
-        target_station_position.y = -1;
-        target_station_position.z = -1;
+        target_charging_position.x =-1;
+        target_charging_position.y =-1;
+        target_charging_position.z =-1;
 
         target_break_position.x = -1;
         target_break_position.y = -1;
         target_break_position.z = -1;
-
-        // start_position.x = -1;
-        // start_position.y = -1;
-        // start_position.z = -1;
-
-        // end_position.x = -1;
-        // end_position.y = -1;
-        // end_position.z = -1;
     }
 };
 
@@ -110,7 +105,7 @@ class myAlgorithm : public Algorithm {
     float map_min_x, map_max_x, map_min_y, map_max_y, map_min_z, map_max_z;
     std::vector<std::string> unused_drone_id;
     std::unordered_map<std::string, MyDroneInfo> my_drone_info; 
-    std::vector<Vec3> generate_waypoints_by_a_star(Vec3 start, Vec3 end, DroneStatus drone);  
+    std::vector<Vec3> generate_waypoints_by_a_star(Vec3 start, Vec3 end, DroneStatus drone);
 };
 
 // TODO: 依据自己的设计添加所需的类，下面举例说明一些常用功能类
