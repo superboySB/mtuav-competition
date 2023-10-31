@@ -9,11 +9,11 @@
 class Planner : public mtuav::PlannerAgent {
    public:
     // 用于登录单机版镜像
-    // explicit Planner(std::shared_ptr<mtuav::Map> map)
-    //     : mtuav::PlannerAgent("127.0.0.1:50051", std::move(map)) {}
-    // 用于登录在线比赛系统
     explicit Planner(std::shared_ptr<mtuav::Map> map)
-        : mtuav::PlannerAgent("sim.race.meituan.com:8090", std::move(map)) {}
+        : mtuav::PlannerAgent("127.0.0.1:50051", std::move(map)) {}
+    // 用于登录在线比赛系统
+    // explicit Planner(std::shared_ptr<mtuav::Map> map)
+    //     : mtuav::PlannerAgent("sim.race.meituan.com:8090", std::move(map)) {}
 
    protected:
     void OnSdkError(std::string error_msg) override { std::cout << error_msg; }

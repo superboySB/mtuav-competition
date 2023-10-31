@@ -54,9 +54,10 @@ bool operator==(const Vec3& a, const Vec3& b) {
            std::fabs(a.z - b.z) < epsilon;
 }
 
-bool black_2d_position_check(const Vec3& a, const double bx, const double by) {
-    return std::fabs(a.x - bx) < epsilon &&
-           std::fabs(a.y - by) < epsilon;
+bool black_2d_position_check(const Vec3& position, const Vec3& target_position, const double bx, const double by) {
+    if (std::fabs(position.x - bx) < epsilon && std::fabs(position.y - by) < epsilon) return true;
+    if (std::fabs(target_position.x - bx) < epsilon && std::fabs(target_position.y - by) < epsilon) return true;
+    return false;
 }
 
 double roundUpToMultipleOf4(double num) {
@@ -232,25 +233,50 @@ void removeConflictCargoes(std::vector<CargoInfo>& cargoes_to_delivery_and_no_ac
                 // 死活拿不到的外卖（降落点误差）
                 auto it = std::find(black_list.begin(), black_list.end(), cargo.id);
                 if (it != black_list.end()) return true;
-                if (black_2d_position_check(cargo.position, 3933, 4537)) return true;
-                if (black_2d_position_check(cargo.position, 3886, 4570)) return true;
-                if (black_2d_position_check(cargo.position, 1723, 1991)) return true;
-                if (black_2d_position_check(cargo.position, 2127, 3940)) return true;
-                if (black_2d_position_check(cargo.position, 3927, 4570)) return true;
-                if (black_2d_position_check(cargo.position, 3964, 4712)) return true;
-                if (black_2d_position_check(cargo.position, 4002, 4794)) return true;
-                if (black_2d_position_check(cargo.position, 1731, 1969)) return true;
-                if (black_2d_position_check(cargo.position, 3940, 4547)) return true;
-                if (black_2d_position_check(cargo.position, 3961, 4492)) return true;
-                if (black_2d_position_check(cargo.position, 3904, 4532)) return true;
-                if (black_2d_position_check(cargo.position, 3951, 4549)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 3933, 4537)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 3886, 4570)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 1723, 1991)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 2127, 3940)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 3927, 4570)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 3964, 4712)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4002, 4794)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 1731, 1969)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 3940, 4547)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 3961, 4492)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 3904, 4532)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 3951, 4549)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 3888, 4512)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 3975, 4533)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 3935, 4595)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 2237, 3324)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 2265, 3340)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 3992, 4824)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 3997, 4801)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4490, 4551)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4418, 4538)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4378, 4673)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4383, 4575)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4464, 4675)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4478, 4603)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4426, 4590)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4496, 4571)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4484, 4683)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4458, 4614)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4486, 4576)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4383, 4655)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4483, 4601)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4431, 4526)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4484, 4517)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4442, 4610)) return true;
+                if (black_2d_position_check(cargo.position, cargo.target_position, 4387, 4609)) return true;
+
                 // TODO: 测试地图有bug,第一个充电站太恶心
-                // if (black_2d_position_check(cargo.position, 664, 361)) return true;
-                // if (black_2d_position_check(cargo.position, 671, 377)) return true;
-                // if (black_2d_position_check(cargo.position, 673, 391)) return true;
+                if (black_2d_position_check(cargo.position, 664, 361)) return true;
+                if (black_2d_position_check(cargo.position, 671, 377)) return true;
+                if (black_2d_position_check(cargo.position, 673, 391)) return true;
                 // TODO: 测试地图有bug,第一个充电站太恶心
                 
-                
+
                 // 删除这个可能导致碰撞的货物
                 for (const auto& other_cargo_id : unfinished_order) {
                     if (other_cargo_id == -1) continue;
@@ -333,6 +359,7 @@ int64_t myAlgorithm::solve() {
     std::vector<DroneStatus> drones_to_hover;
 
     for (auto& drone : this->_drone_info) {
+        // break; // TODO: 摆烂专用
         if(my_drone_info.find(drone.drone_id) == my_drone_info.end()){
             LOG(INFO) << "Now we do not use: " << drone.drone_id;
             continue;
@@ -369,9 +396,14 @@ int64_t myAlgorithm::solve() {
                 mydrone.target_charging_position.z =-1;
 
                 std::string new_drone_id = unused_drone_id.front();
+                // DroneStatus new_drone_status = this->_drone_info.at(new_drone_id);
                 my_drone_info[new_drone_id].flying_height = mydrone.flying_height;
                 my_drone_info[new_drone_id].has_init = true; // 没有初始化必要了
                 my_drone_info[new_drone_id].static_grid = mydrone.static_grid;
+                my_drone_info[new_drone_id].init_start_from_station_index = mydrone.init_start_from_station_index;
+                my_drone_info[new_drone_id].drone_status = Status::READY;
+                // my_drone_info[new_drone_id].drone_battery = new_drone_status.battery;
+                // my_drone_info[new_drone_id].drone_position = new_drone_status.position;
                 // 计算新的width和height
                 int new_width = my_drone_info[new_drone_id].static_grid[0].size();
                 int new_height = my_drone_info[new_drone_id].static_grid.size();
@@ -388,7 +420,7 @@ int64_t myAlgorithm::solve() {
         bool unsafe_flag = false;
         auto available_battery_stations = this->_task_info->battery_stations;
         // TODO: 测试地图有bug,第一个充电站太恶心
-        // available_battery_stations.erase(available_battery_stations.begin()); 
+        available_battery_stations.erase(available_battery_stations.begin()); 
         // TODO: 测试地图有bug,第一个充电站太恶心
         std::sort(available_battery_stations.begin(), available_battery_stations.end(), [drone](Vec3 p1, Vec3 p2) {
             Vec3 the_drone_pos = drone.position;
@@ -401,12 +433,11 @@ int64_t myAlgorithm::solve() {
             return p1_to_drone < p2_to_drone;
         });
         for (const auto& pair: my_drone_info){
-            if (pair.first == drone.drone_id) continue;
+            if ((pair.first == drone.drone_id) || (pair.second.drone_status == Status::CRASH)) continue;
 
             if ((distance_2D(mydrone.drone_position, pair.second.drone_position)<500)
                 && (pair.second.drone_position == mydrone.target_charging_position) 
                 && (pair.second.drone_status == Status::READY 
-                || pair.second.drone_status == Status::READY_TO_FLY 
                 || pair.second.drone_status == Status::TAKING_OFF 
                 || pair.second.drone_status == Status::LANDING)
                     ){
@@ -893,7 +924,7 @@ int64_t myAlgorithm::solve() {
     }
 
     // 根据算法计算情况，得出下一轮的算法调用间隔，单位ms
-    int64_t sleep_time_ms = 3000;
+    int64_t sleep_time_ms = 10000;
 
     // 依据需求计算所需的sleep time
     // sleep_time_ms = Calculate_sleep_time();

@@ -30,27 +30,43 @@ void initialize_my_drone_info(std::unordered_map<std::string, MyDroneInfo>& my_d
         std::shared_ptr<Map> map, float map_min_x, float map_max_x, float map_min_y, 
         float map_max_y, float map_min_z, float map_max_z, std::vector<std::string>& unused_drone_id) {
     
-    // 当前方案 *****
-    for (int i = 7; i <= 25; ++i) {
+    // 方案1：当前方案 (垃圾玩意，偶尔还炸)
+    for (int i = 4; i <= 25; ++i) {
         std::ostringstream os;
         os << "drone-" << std::setfill('0') << std::setw(3) << i;
         unused_drone_id.push_back(os.str());
     }
-    my_drone_info["drone-001"].flying_height = 70;
-    my_drone_info["drone-002"].flying_height = 80;
-    my_drone_info["drone-003"].flying_height = 90;
-    my_drone_info["drone-004"].flying_height = 100;
-    my_drone_info["drone-005"].flying_height = 110;
-    my_drone_info["drone-006"].flying_height = 120;
+    my_drone_info["drone-001"].flying_height = 120;
+    my_drone_info["drone-002"].flying_height = 110;
+    my_drone_info["drone-003"].flying_height = 100;
 
-    my_drone_info["drone-001"].init_start_from_station_index = 1;
-    my_drone_info["drone-002"].init_start_from_station_index = 2;
-    my_drone_info["drone-003"].init_start_from_station_index = 3;
-    my_drone_info["drone-004"].init_start_from_station_index = 5;
-    my_drone_info["drone-005"].init_start_from_station_index = 0;
-    my_drone_info["drone-006"].init_start_from_station_index = 4;
+    my_drone_info["drone-001"].init_start_from_station_index = 0;
+    my_drone_info["drone-002"].init_start_from_station_index = 4;
+    my_drone_info["drone-003"].init_start_from_station_index = 7;
+    
 
-    // 终极备选（狂轰乱炸）
+    // 方案2：适中方案（空域均分，低空太慢）
+    // for (int i = 7; i <= 25; ++i) {
+    //     std::ostringstream os;
+    //     os << "drone-" << std::setfill('0') << std::setw(3) << i;
+    //     unused_drone_id.push_back(os.str());
+    // }
+    // my_drone_info["drone-001"].flying_height = 120;
+    // my_drone_info["drone-002"].flying_height = 110;
+    // my_drone_info["drone-003"].flying_height = 100;
+    // my_drone_info["drone-004"].flying_height = 90;
+    // my_drone_info["drone-005"].flying_height = 80;
+    // my_drone_info["drone-006"].flying_height = 70;
+
+    // my_drone_info["drone-001"].init_start_from_station_index = 0;
+    // my_drone_info["drone-002"].init_start_from_station_index = 4;
+    // my_drone_info["drone-003"].init_start_from_station_index = 7;
+    // my_drone_info["drone-004"].init_start_from_station_index = 1;
+    // my_drone_info["drone-005"].init_start_from_station_index = 2;
+    // my_drone_info["drone-006"].init_start_from_station_index = 3;
+
+
+    // 方案3：终极备选（狂轰乱炸）
     // for (int i = 25; i <= 25; ++i) {
     //     std::ostringstream os;
     //     os << "drone-" << std::setfill('0') << std::setw(3) << i;
@@ -132,11 +148,11 @@ int main(int argc, const char* argv[]) {
 
     // 配置本地路径读取地图信息
     // 用于单机版镜像
-    // auto map = mtuav::Map::CreateMapFromFile(
-    //     "/workspace/mtuav-competition/map/test_map.bin");
-    // 用于在线比赛系统
     auto map = mtuav::Map::CreateMapFromFile(
-        "/workspace/mtuav-competition/map/competition_map.bin");
+        "/workspace/mtuav-competition/map/test_map.bin");
+    // 用于在线比赛系统
+    // auto map = mtuav::Map::CreateMapFromFile(
+    //     "/workspace/mtuav-competition/map/competition_map.bin");
     
     // 声明一个planner指针
     std::shared_ptr<Planner> planner = std::make_shared<Planner>(map);
@@ -149,11 +165,11 @@ int main(int argc, const char* argv[]) {
     }
 
     // 下面使用测试账号仅用于登录单机版镜像
-    // mtuav::Response r =
-    //     planner->Login("801f0ff5-5359-4c3e-99d4-f05d7eb47423", "e57aab02cf1f7433d7bf385748376164");
-    // 下面使用测试账号仅用于登录在线比赛系统
     mtuav::Response r =
-        planner->Login("b87560ef-1f81-4545-948e-2b445544eb83", "aa855fbc9c433422d69584581d4a69c4");
+        planner->Login("801f0ff5-5359-4c3e-99d4-f05d7eb47423", "e57aab02cf1f7433d7bf385748376164");
+    // 下面使用测试账号仅用于登录在线比赛系统
+    // mtuav::Response r =
+    //     planner->Login("b87560ef-1f81-4545-948e-2b445544eb83", "aa855fbc9c433422d69584581d4a69c4");
 
     if (r.success == false) {
         LOG(INFO) << "Login failed, msg: " << r.msg;
@@ -169,7 +185,7 @@ int main(int argc, const char* argv[]) {
     // Caution!!!
     // 通过sdk获取到3个任务，第一个和第二个任务为测试任务(获取到的任务列表索引为0和1)，可以无限次执行；
     // 第三个任务为正式比赛任务(获取到的任务列表索引为2)，限制为最多执行5次，最终结果为5次之中最好的成绩。
-    int task_idx = 0;
+    int task_idx = 2;  //////// 慎重哦！
     // 获取比赛任务指针
     auto task = planner->QueryTask(task_idx);
     if (task == nullptr) {
