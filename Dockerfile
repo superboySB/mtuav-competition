@@ -8,7 +8,8 @@ RUN apt-get update && apt-get install -y locales && locale-gen en_US.UTF-8
 #     tar -zxvf cmake-3.27.7-linux-x86_64.tar.gz && mv cmake-3.27.7-linux-x86_64 /opt/cmake-3.27
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata net-tools vim git htop wget curl zip unzip build-essential dpkg\
     libssl-dev libglpk-dev gdb libgoogle-glog-dev libboost-program-options-dev cmake ca-certificates clang ntpdate gnupg g++-10\
-    clang-tidy clang-format lsb-release netbase libnlopt-cxx-dev gfortran nlohmann-json3-dev libyaml-cpp-dev valgrind tmux
+    clang-tidy clang-format lsb-release netbase libnlopt-cxx-dev gfortran nlohmann-json3-dev libyaml-cpp-dev valgrind tmux \
+    iputils-ping
 RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo "Asia/Shanghai" > /etc/timezone && \
     ntpdate -b -p 5 -u cn.ntp.org.cn
 
@@ -52,9 +53,10 @@ RUN cd /workspace/or-tools && cmake -S . -B build -DBUILD_DEPS=ON && \
 
 # 参考3：rl4co，在叶神安利下，这波是比较想用的方法，但需要参考下面的pybind11的例子做一个C++的封装，因为cppRL这个老库的libtorch性能用的很差、并且没有用到显卡加速
 # （从目前SDK的封装实现来说，只能局部给一些api打包成python接口，全部打包比较困难）
-RUN cd /workspace && git clone https://github.com/kaist-silab/rl4co && cd rl4co && pip install --upgrade pip && pip install .
+# RUN cd /workspace && git clone https://github.com/kaist-silab/rl4co && cd rl4co && pip install --upgrade pip && pip install .
 
-# 参考4：pybind的一个例子（这个基于实时通信的代码不太好打包成Python，很多实现都给藏起来了）
+# 参考4：pybind的一个例子，用来设计python SDK
+#（这个基于实时通信的代码不太好打包成Python，很多实现都给藏起来了）
 RUN cd /workspace && pip install pytest imageio && git clone https://github.com/pybind/pybind11.git && cd pybind11 && \
     git checkout v2.11.1 && mkdir build && cd build && cmake .. && make -j8 && make install
 RUN cd /workspace && git clone https://github.com/zijinoier/mater && cd mater && mkdir build && cd build && \
@@ -66,9 +68,10 @@ RUN cd /workspace && git clone https://github.com/zijinoier/mater && cd mater &&
 # RUN git clone https://github.com/snape/RVO2-3D && cd RVO2-3D && mkdir build && cd build && cmake .. && make -j16 && make install
 
 # 参考6：Pybullet-drones开源的swarm规划控制
-RUN apt-get install -y doxygen graphviz libeigen3-dev libboost-test-dev
-RUN cd /workspace && git clone --recursive https://github.com/superboySB/eigen-quadprog && cd eigen-quadprog && mkdir build && \
-    cd build && cmake .. && make && make install && ln -s /usr/include/eigen3/Eigen /usr/include/Eigen
+# （这次的比赛没有给MPC+贝塞尔曲线的规划空间）
+# RUN apt-get install -y doxygen graphviz libeigen3-dev libboost-test-dev
+# RUN cd /workspace && git clone --recursive https://github.com/superboySB/eigen-quadprog && cd eigen-quadprog && mkdir build && \
+#     cd build && cmake .. && make && make install && ln -s /usr/include/eigen3/Eigen /usr/include/Eigen
 # RUN mkdir /workspace/swarm_ws && mkdir /workspace/swarm_ws/src && cd /workspace/swarm_ws/src && \
 #     git clone https://github.com/utiasDSL/AMSwarm
 # RUN cd .. && catkin_make && source devel/setup.bash && rosrun amswarm swarm_am_nav
