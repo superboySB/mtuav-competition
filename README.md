@@ -1,6 +1,11 @@
 # mtuav-competition
 低空经济智能飞行管理挑战赛 性能赛（BIT-LINC）
 
+目前主要参考：
+* 优化了这份开源Planner的实现：https://github.com/PathPlanning/AA-SIPP-m
+* 可运行方案中暂时没有用到OR-Tools，但有相应的测试脚本
+* Dockerfile中给出了使用过的第三方库，但均作放弃，目前方案基本除了AA-SIPP，其余代码还是自研代码
+
 # 运行流程
 ## 准备
 下拉美团提供的可视化docker镜像：
