@@ -11,6 +11,7 @@
 #include "planner.h"
 #include "traj_generation.hpp"
 #include <unordered_map>
+#include <future>
 
 // 用于表示当前无人机信息
 using drones_info = std::vector<mtuav::DroneStatus>;
@@ -97,8 +98,7 @@ class myAlgorithm : public Algorithm {
     // 示例：给定起点、终点，返回无人机WayPoint飞行轨迹与飞行时间
     // std::tuple<std::vector<Segment>, int64_t> waypoints_generation(Vec3 start, Vec3 end);
     // 示例：给定起点、终点与无人机，返回无人机trajectory飞行轨迹与飞行时间
-    std::tuple<std::vector<Segment>, int64_t> trajectory_generation(Vec3 start, Vec3 end, DroneStatus drone);
-    std::tuple<std::vector<Segment>, int64_t> trajectory_generation_without_taking_off(Vec3 start, Vec3 end, DroneStatus drone);
+    std::tuple<std::vector<Segment>, int64_t> trajectory_generation(Vec3 start, Vec3 end, DroneStatus drone, bool without_taking_off);
     // 打印segment的信息
     std::string segments_to_string(std::vector<Segment> segs);
 

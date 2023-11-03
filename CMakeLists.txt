@@ -31,6 +31,13 @@ set(TEST_MAIN_SRC algorithm/sdk_test_main.cpp
 add_executable(mtuav_sdk_example ${TEST_MAIN_SRC})
 target_link_libraries(mtuav_sdk_example mtuav_sdk -lpthread -lglog)
 
+
+# ------------------------------------------------------------------------------------------
+# 添加CGO的单独测试路径
+set(TEST_GO_SRC tests/test_golang.cpp)
+add_executable(test_go ${TEST_GO_SRC})
+target_link_libraries(test_go -lpathfindwrapper -lpthread -lglog)
+
 # 添加SIPP的单独测试路径
 set(SIPP_SRC
     path_finding/src/main.cpp  
@@ -46,8 +53,6 @@ set(SIPP_SRC
 add_executable(path_finding ${SIPP_SRC})
 target_link_libraries(path_finding -lpthread -lglog)
 
-# ------------------------------------------------------------------------------------------
-# 测试专用，未实际接入到源代码
 # 添加ortools的单独测试路径
 set(TEST_ORTOOLS_SRC tests/test_ortools.cpp)
 add_executable(test_ortools ${TEST_ORTOOLS_SRC})

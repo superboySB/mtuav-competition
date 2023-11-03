@@ -41,7 +41,19 @@ docker exec -it mtuav-alg /bin/bash
 ```sh
 git clone https://github.com/superboySB/mtuav-competition && cd mtuav-competition
 ```
-由于github限制，要先从[官方SDK下载页面](http://dpurl.cn/lLbhoTvz)里把`map/competition_map.bin`、`map/test_map.bin`文件拖进相应文件夹内（只有在线测试需要competition_map.bin）。
+由于github限制，要先从[官方SDK下载页面](http://dpurl.cn/lLbhoTvz)里把`map/competition_map.bin`、`map/test_map.bin`文件拖进相应文件夹内（只有在线测试需要competition_map.bin）。对于我们算法中的路径规划部分，这是一个单独的module，应该率先生成相应的so文件到本地，
+```sh
+go mod tidy
+go mod download
+```
+将这些模块放在C++的链接里面
+```sh
+go build -o /workspace/mtuav-competition/libs/libpathfindwrapper.so -buildmode=c-shared main.go pathfind.go polygonjson.go
+```
+建议把libs文件夹内同时生成的头文件放在`algorithm/include`内部，便于`cmake`。此外，我还有一个可以可视化效果的单独go模块，可以待选测试
+```sh
+go run demo.go draw.go polygonjson.go
+```
 
 ### [本地调试] 连接本地镜像mock server
 **每次下拉更新代码、需要重新运行算法时**，需要先重启美团镜像（必要时也可以重启算法container，相当于重启）

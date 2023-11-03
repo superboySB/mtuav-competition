@@ -4,31 +4,23 @@ FROM nvcr.io/nvidia/pytorch:22.12-py3
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=en_US.UTF-8 LANGUAGE=en_US:en LC_ALL=en_US.UTF-8
 RUN apt-get update && apt-get install -y locales && locale-gen en_US.UTF-8
-# RUN cd /workspace && wget https://github.com/Kitware/CMake/releases/download/v3.27.7/cmake-3.27.7-linux-x86_64.tar.gz && \
-#     tar -zxvf cmake-3.27.7-linux-x86_64.tar.gz && mv cmake-3.27.7-linux-x86_64 /opt/cmake-3.27
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata net-tools vim git htop wget curl zip unzip build-essential dpkg\
-    libssl-dev libglpk-dev gdb libgoogle-glog-dev libboost-program-options-dev cmake ca-certificates clang ntpdate gnupg g++-10\
-    clang-tidy clang-format lsb-release netbase libnlopt-cxx-dev gfortran nlohmann-json3-dev libyaml-cpp-dev valgrind tmux \
-    iputils-ping
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata net-tools vim git htop wget curl zip unzip build-essential dpkg \
+    iputils-ping libssl-dev libglpk-dev gdb libgoogle-glog-dev libboost-program-options-dev cmake ca-certificates clang ntpdate gnupg \
+    clang-tidy clang-format lsb-release netbase  valgrind tmux 
 RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo "Asia/Shanghai" > /etc/timezone && \
     ntpdate -b -p 5 -u cn.ntp.org.cn
 
 # Install OR-tools
 RUN cd /workspace && git clone https://github.com/google/or-tools
-# RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-10 10 && \
-#     update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-10 10 && \
-#     update-alternatives --install /usr/bin/cc cc /usr/bin/gcc 30 && \
-#     update-alternatives --set cc /usr/bin/gcc && \
-#     update-alternatives --install /usr/bin/c++ c++ /usr/bin/g++ 30 && \
-#     update-alternatives --set c++ /usr/bin/g++
 RUN cd /workspace/or-tools && cmake -S . -B build -DBUILD_DEPS=ON && \
     cmake --build build --config Release --target all -j -v && \
     cmake --build build --config Release --target test -v && \
     cmake --build build --config Release --target install -v
-# RUN update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-9 9 && \
-#     update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-9 9 && \
-#     update-alternatives --set gcc /usr/bin/gcc-9 && \
-#     update-alternatives --set g++ /usr/bin/g++-9
+
+# Install Golong
+RUN cd /workspace/ && wget https://dl.google.com/go/go1.21.3.linux-amd64.tar.gz && tar -C /usr/local -xzf go1.21.3.linux-amd64.tar.gz && \
+    echo "export PATH=$PATH:/usr/local/go/bin" >> ~/.bashrc
+
 
 # -------------------------------------------------------------
 # 以下很多是一些用处不大的前期参考
@@ -57,10 +49,10 @@ RUN cd /workspace/or-tools && cmake -S . -B build -DBUILD_DEPS=ON && \
 
 # 参考4：pybind的一个例子，用来设计python SDK
 #（这个基于实时通信的代码不太好打包成Python，很多实现都给藏起来了）
-RUN cd /workspace && pip install pytest imageio && git clone https://github.com/pybind/pybind11.git && cd pybind11 && \
-    git checkout v2.11.1 && mkdir build && cd build && cmake .. && make -j8 && make install
-RUN cd /workspace && git clone https://github.com/zijinoier/mater && cd mater && mkdir build && cd build && \
-    cmake .. && make -j16 && make install
+# RUN cd /workspace && pip install pytest imageio && git clone https://github.com/pybind/pybind11.git && cd pybind11 && \
+#     git checkout v2.11.1 && mkdir build && cd build && cmake .. && make -j8 && make install
+# RUN cd /workspace && git clone https://github.com/zijinoier/mater && cd mater && mkdir build && cd build && \
+#     cmake .. && make -j16 && make install
 
 # 参考5：动态避障导航算法ORCA
 #（问题是缺少静态障碍物、加速度约束，并且假设是互惠避障、可扩展性不强）
@@ -77,11 +69,10 @@ RUN cd /workspace && git clone https://github.com/zijinoier/mater && cd mater &&
 # RUN cd .. && catkin_make && source devel/setup.bash && rosrun amswarm swarm_am_nav
 # -------------------------------------------------------------
 
-# RUN echo 'export PATH=/opt/cmake-3.27/bin:$PATH' >> ~/.bashrc && echo "source /opt/ros/noetic/setup.bash" >> ~/.bashrc 
 WORKDIR /workspace
 
 # [待最终稳定后再加] 在构建镜像时清理 apt 缓存，减小最终镜像的体积
-RUN apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+# RUN apt-get clean && \
+#     rm -rf /var/lib/apt/lists/*
 
 CMD ["/bin/bash"]

@@ -31,18 +31,18 @@ void initialize_my_drone_info(std::unordered_map<std::string, MyDroneInfo>& my_d
         float map_max_y, float map_min_z, float map_max_z, std::vector<std::string>& unused_drone_id) {
     
     // 方案1：当前方案 (垃圾玩意，偶尔还炸)
-    for (int i = 4; i <= 25; ++i) {
+    for (int i = 3; i <= 25; ++i) {
         std::ostringstream os;
         os << "drone-" << std::setfill('0') << std::setw(3) << i;
         unused_drone_id.push_back(os.str());
     }
     my_drone_info["drone-001"].flying_height = 120;
-    my_drone_info["drone-002"].flying_height = 110;
-    my_drone_info["drone-003"].flying_height = 100;
+    // my_drone_info["drone-002"].flying_height = 110;
+    // my_drone_info["drone-003"].flying_height = 100;
 
     my_drone_info["drone-001"].init_start_from_station_index = 0;
-    my_drone_info["drone-002"].init_start_from_station_index = 4;
-    my_drone_info["drone-003"].init_start_from_station_index = 7;
+    // my_drone_info["drone-002"].init_start_from_station_index = 4;
+    // my_drone_info["drone-003"].init_start_from_station_index = 7;
     
 
     // 方案2：适中方案（空域均分，低空太慢）
@@ -113,7 +113,7 @@ void initialize_my_drone_info(std::unordered_map<std::string, MyDroneInfo>& my_d
                     int ix = (x - map_min_x) / step;
                     int iy = (y - map_min_y) / step;
                     // Use the distance value to set the grid cell value
-                    if (voxel->distance <= 4) {
+                    if (voxel->distance < 8) {
                         grid[iy][ix] = 1;
                     } else {
                         grid[iy][ix] = 0;

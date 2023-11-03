@@ -20,7 +20,7 @@ dependencies/mtuav_3d_vision
 *.dll
 
 # Fortran module files
-*.mod
+# *.mod
 *.smod
 
 # Compiled Static libraries
