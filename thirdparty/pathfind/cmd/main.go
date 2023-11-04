@@ -71,6 +71,16 @@ func main() {
 
 func run(ctx *canvas.Context) {
 	polygons, size, err := polygonsFromJSON([]byte(floorPlan))
+
+	// // 设定文件的绝对路径
+	// floorPlanFilePath := "/workspace/mtuav-competition/log/map-drone-003.json"
+	// // 从文件中读取floor plan
+	// floorPlanBytes, err := os.ReadFile(floorPlanFilePath)
+	// if err != nil {
+	// 	log.Fatalf("failed to read floor plan file: %v", err)
+	// }
+	// polygons, size, err := polygonsFromJSON(floorPlanBytes)
+
 	if err != nil {
 		log.Fatal(err)
 	}

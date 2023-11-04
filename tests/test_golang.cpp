@@ -125,21 +125,21 @@ int main() {
     ]
     })json";
 
-    double startX = 80, startY = 80, endX = 620, endY = 580, height = 70;
+    double startX = 80, startY = 80, endX = 620, endY = 580;
 
     // Call the Go function and get the result in the form of FindPath_return struct
-    FindPath_return result = FindPath(const_cast<char*>(floorPlan), startX, startY, endX, endY, height);
+    FindPath_return result = FindPath(const_cast<char*>(floorPlan), startX, startY, endX, endY);
 
     // Access the returned pointer and size from the FindPath_return struct
-    Vec3* raw_result = result.r0; // Assuming r0 is the pointer to Vec3 array
+    Vec2* raw_result = result.r0; // Assuming r0 is the pointer to Vec3 array
     int size = result.r1;         // Assuming r1 is the size of the array
 
     // Convert the C array to a std::vector<Vec3>
-    std::vector<Vec3> path(raw_result, raw_result + size);
+    std::vector<Vec2> path(raw_result, raw_result + size);
 
     // Print or process the results
-    for (const Vec3& point : path) {
-        std::cout << "(" << point.x << ", " << point.y << ", " << point.z << ")" << std::endl;
+    for (const Vec2& point : path) {
+        std::cout << "(" << point.x << ", " << point.y  << ")" << std::endl;
     }
 
     // Free the memory allocated in Go

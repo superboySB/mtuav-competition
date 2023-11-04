@@ -28,6 +28,7 @@ struct MyDroneInfo {
     double flying_height;
 
     std::vector<std::vector<int>> static_grid;
+    std::string map_json;
     std::vector<int> unfinished_cargo_ids;
     std::vector<int> black_cargo_list;
     

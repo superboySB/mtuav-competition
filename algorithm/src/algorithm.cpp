@@ -2,6 +2,7 @@
 #include <cstdlib> // for system()
 #include <algorithm>    // C++ STL 算法库
 #include "algorithm.h"  // 选手自行设计的算法头文件
+#include "libpathfindwrapper.h" 
 #include <cmath>
 #include "math.h"
 
@@ -359,15 +360,16 @@ int64_t myAlgorithm::solve() {
                 my_drone_info[new_drone_id].static_grid = mydrone.static_grid;
                 my_drone_info[new_drone_id].init_start_from_station_index = mydrone.init_start_from_station_index;
                 my_drone_info[new_drone_id].drone_status = Status::READY;
+                my_drone_info[new_drone_id].map_json = mydrone.map_json;
                 // my_drone_info[new_drone_id].drone_battery = new_drone_status.battery;
                 // my_drone_info[new_drone_id].drone_position = new_drone_status.position;
                 // 计算新的width和height
-                int new_width = my_drone_info[new_drone_id].static_grid[0].size();
-                int new_height = my_drone_info[new_drone_id].static_grid.size();
-                // 使用新的width、height和grid生成map的XML   
-                std::string newXML = GenerateMapNewXML(new_width, new_height, my_drone_info[new_drone_id].static_grid);
-                std::string mode = "map";
-                SaveXMLToFile(newXML, mode, new_drone_id);
+                // int new_width = my_drone_info[new_drone_id].static_grid[0].size();
+                // int new_height = my_drone_info[new_drone_id].static_grid.size();
+                // // 使用新的width、height和grid生成map的XML   
+                // std::string newXML = GenerateMapNewXML(new_width, new_height, my_drone_info[new_drone_id].static_grid);
+                // std::string mode = "map";
+                // SaveXMLToFile(newXML, mode, new_drone_id);
                 unused_drone_id.erase(unused_drone_id.begin());
             }
             continue;
@@ -377,7 +379,7 @@ int64_t myAlgorithm::solve() {
         bool unsafe_flag = false;
         auto available_battery_stations = this->_task_info->battery_stations;
         // TODO: 测试地图有bug,第一个充电站太恶心
-        // available_battery_stations.erase(available_battery_stations.begin()); 
+        available_battery_stations.erase(available_battery_stations.begin()); 
         // TODO: 测试地图有bug,第一个充电站太恶心
         std::sort(available_battery_stations.begin(), available_battery_stations.end(), [drone](Vec3 p1, Vec3 p2) {
             Vec3 the_drone_pos = drone.position;
@@ -891,36 +893,24 @@ int64_t myAlgorithm::solve() {
 
 
 std::vector<Vec3> myAlgorithm::generate_waypoints_by_a_star(Vec3 start, Vec3 end, DroneStatus drone) {
-    // 下面只是二维规划即可。因为三维上，事先已经划分了空域，所以高度都是固定值
-    double flying_height = my_drone_info[drone.drone_id].flying_height;
+    std::string input_json = my_drone_info[drone.drone_id].map_json;
+    std::vector<char> writable(input_json.begin(), input_json.end());
+    writable.push_back('\0'); // 确保以空字符终止
+    FindPath_return result = FindPath(writable.data(), start.x, start.y, end.x, end.y);
 
-    // 使用新的start、end生成task的XML   
-    std::string newXML = GenerateTaskNewXML(start, end);
-    std::string mode = "task";
-    SaveXMLToFile(newXML, mode, drone.drone_id);
+    Vec2* raw_result = result.r0; // Assuming r0 is the pointer to Vec3 array
+    int size = result.r1;         // Assuming r1 is the size of the array
 
-    // 执行SIPP
-    std::string executable_path = "/workspace/mtuav-competition/build/path_finding";
-    std::ostringstream pathStream1;
-    pathStream1 << "/workspace/mtuav-competition/params/task-" << drone.drone_id << ".xml";
-    std::string arg1 = pathStream1.str();
-    std::ostringstream pathStream2;
-    pathStream2 << "/workspace/mtuav-competition/params/map-" << drone.drone_id << ".xml";
-    std::string arg2 = pathStream2.str();
-    std::ostringstream pathStream3;
-    pathStream3 << "/workspace/mtuav-competition/params/config.xml";
-    std::string arg3 = pathStream3.str();
-    std::ostringstream cmd;
-    cmd << executable_path << " " << arg1 << " " << arg2 << " " << arg3;
-    LOG(INFO) << "plan for: " << drone.drone_id << " from "<< start.x << " " << start.y << " "<< start.z
-              <<", to " << end.x << " " << end.y << " "<< end.z;
-    system(cmd.str().c_str());
-
-    //提取运行结果
-    std::ostringstream pathStream_read;
-    pathStream_read << "/workspace/mtuav-competition/params/task-" << drone.drone_id << "_log.xml";
-    std::string path_read = pathStream_read.str();
-    std::vector<Vec3> waypoints = ReadXMLFromFile(path_read,flying_height);
+    // Convert the C array to a std::vector<Vec3>
+    std::vector<Vec2> path(raw_result, raw_result + size);
+    std::vector<Vec3> waypoints;
+    path.erase(path.begin());
+    path.pop_back();
+    for (Vec2 point: path){
+        Vec3 waypoint;
+        waypoints.push_back({point.x, point.y, my_drone_info[drone.drone_id].flying_height});
+    }
+    free(raw_result);
 
     return waypoints;
 }

@@ -2,11 +2,10 @@ package main
 
 /*
 #include <stdlib.h>
-typedef struct Vec3 {
+typedef struct Vec2 {
   double x;
   double y;
-  double z;
-} Vec3;
+} Vec2;
 */
 import "C"
 
@@ -19,8 +18,7 @@ import (
 )
 
 //export FindPath
-func FindPath(floorPlan *C.char, startX C.double, startY C.double, endX C.double, endY C.double,
-	height C.double) (*C.Vec3, C.int) {
+func FindPath(floorPlan *C.char, startX C.double, startY C.double, endX C.double, endY C.double) (*C.Vec2, C.int) {
 	plan := C.GoString(floorPlan)
 	polygons, _, err := polygonsFromJSON([]byte(plan))
 	if err != nil {
@@ -34,14 +32,13 @@ func FindPath(floorPlan *C.char, startX C.double, startY C.double, endX C.double
 	fmt.Println(path)
 
 	// 在 C 中为结果数组分配内存
-	result := (*C.Vec3)(C.malloc(C.size_t(len(path)) * C.size_t(unsafe.Sizeof(C.Vec3{}))))
-	resultSlice := (*[1 << 30]C.Vec3)(unsafe.Pointer(result))[:len(path):len(path)]
+	result := (*C.Vec2)(C.malloc(C.size_t(len(path)) * C.size_t(unsafe.Sizeof(C.Vec2{}))))
+	resultSlice := (*[1 << 30]C.Vec2)(unsafe.Pointer(result))[:len(path):len(path)]
 
 	for i, pt := range path {
-		resultSlice[i] = C.Vec3{
+		resultSlice[i] = C.Vec2{
 			x: C.double(pt.X),
 			y: C.double(pt.Y),
-			z: height,
 		}
 	}
 

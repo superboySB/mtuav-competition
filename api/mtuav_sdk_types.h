@@ -12,6 +12,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+
 typedef struct Vec3 {
   double x;
   double y;

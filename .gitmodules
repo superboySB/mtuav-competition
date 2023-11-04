@@ -1,0 +1,3 @@
+[submodule "thirdparty/polylidar"]
+	path = thirdparty/polylidar
+	url = https://github.com/superboySB/polylidar

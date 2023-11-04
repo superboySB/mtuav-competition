@@ -22,11 +22,10 @@ typedef struct { const char *p; ptrdiff_t n; } _GoString_;
 #line 3 "pathfind.go"
 
 #include <stdlib.h>
-typedef struct Vec3 {
+typedef struct Vec2 {
   double x;
   double y;
-  double z;
-} Vec3;
+} Vec2;
 
 #line 1 "cgo-generated-wrapper"
 
@@ -87,10 +86,10 @@ extern "C" {
 
 /* Return type for FindPath */
 struct FindPath_return {
-	Vec3* r0;
+	Vec2* r0;
 	int r1;
 };
-extern struct FindPath_return FindPath(char* floorPlan, double startX, double startY, double endX, double endY, double height);
+extern struct FindPath_return FindPath(char* floorPlan, double startX, double startY, double endX, double endY);
 
 #ifdef __cplusplus
 }

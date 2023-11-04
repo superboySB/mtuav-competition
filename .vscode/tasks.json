@@ -4,7 +4,7 @@
       {
           "label": "build debug",
           "type": "shell",
-          "command": "mkdir -p ${workspaceFolder}/build && cd ${workspaceFolder}/build && cmake .. && cmake --build . --config Debug",
+          "command": "mkdir -p ${workspaceFolder}/build && cd ${workspaceFolder}/build && cmake .. -DFETCHCONTENT_QUIET=OFF -DPYTHON_EXECUTABLE=$(python3 -c \"import sys; print(sys.executable)\") && cmake --build . --config Debug",
           "group": {
               "kind": "build",
               "isDefault": true

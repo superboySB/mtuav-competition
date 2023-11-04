@@ -10,26 +10,35 @@ set(CMAKE_CXX_FLAGS_DEBUG "-O0 -g")
 set(CMAKE_BUILD_TYPE Debug)
 
 # 依赖包
-find_package(OpenMP)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
-find_package(eigen-quadprog)
-find_package(nlohmann_json)
+find_package(OpenMP REQUIRED)
+if(OpenMP_CXX_FOUND)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
+
+# 添加外部依赖
+add_subdirectory("thirdparty/polylidar")
 
 # 添加include路径
+include_directories(/usr/local/include/ortools/)
 include_directories(algorithm/include/)
 include_directories(path_finding/include/)
-include_directories(/usr/local/include/ortools/)
 include_directories(api/)
 link_directories(libs/)
+
 
 # 美团主文件
 set(TEST_MAIN_SRC algorithm/sdk_test_main.cpp
     ${PROJECT_SOURCE_DIR}/algorithm/src/algorithm.cpp
     ${PROJECT_SOURCE_DIR}/algorithm/src/current_game_info.cpp
-    path_finding/src/tinyxml2.cpp
+    # path_finding/src/tinyxml2.cpp
 )
 add_executable(mtuav_sdk_example ${TEST_MAIN_SRC})
-target_link_libraries(mtuav_sdk_example mtuav_sdk -lpthread -lglog)
+target_link_libraries(mtuav_sdk_example 
+            mtuav_sdk
+            Polylidar
+            -lpathfindwrapper 
+            -lpthread 
+            -lglog)
 
 
 # ------------------------------------------------------------------------------------------
