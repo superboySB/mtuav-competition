@@ -32,9 +32,73 @@ void sigint_handler(int sig) {
     }
 }
 
-// 计算向量叉积
-double cross(const Vec2& O, const Vec2& A, const Vec2& B) {
-  return (A.x - O.x) * (B.y - O.y) - (A.y - O.y) * (B.x - O.x);
+// 计算两个向量的点积
+double dot(const Vec2& v1, const Vec2& v2) {
+    return v1.x * v2.x + v1.y * v2.y;
+}
+
+// 计算向量的模长
+double norm(const Vec2& v) {
+    return std::sqrt(v.x * v.x + v.y * v.y);
+}
+
+// 计算两个向量的夹角（以度为单位）
+double angleBetween(const Vec2& v1, const Vec2& v2) {
+    double dot_product = dot(v1, v2);
+    double norms_product = norm(v1) * norm(v2);
+    double cos_angle = dot_product / norms_product;
+    // 防止由于浮点数精度问题导致acos函数的输入超出[-1, 1]的范围
+    cos_angle = std::max(-1.0, std::min(1.0, cos_angle));
+    double angle_radians = std::acos(cos_angle);
+    double angle_degrees = angle_radians * (180.0 / M_PI);
+    return angle_degrees;
+}
+
+// 判断三个点是否几乎共线
+bool areCollinear(const Vec2& p1, const Vec2& p2, const Vec2& p3, const double angle_eps) {
+    Vec2 v1 = {p2.x - p1.x, p2.y - p1.y};
+    Vec2 v2 = {p3.x - p1.x, p3.y - p1.y};
+    double angle = angleBetween(v1, v2);
+    return std::abs(angle) < angle_eps || std::abs(angle - 180.0) < angle_eps;
+}
+
+Vec2 calculatePolygonCentroid(const std::vector<Vec2>& points) {
+    if (points.size() < 3) {
+        // 对于少于三个点的情况，无法定义多边形，返回错误或默认值
+        return Vec2{0, 0};
+    }
+
+    double centroidX = 0.0, centroidY = 0.0;
+    double signedArea = 0.0;
+    double x0 = 0.0; // 当前顶点的X
+    double y0 = 0.0; // 当前顶点的Y
+    double x1 = 0.0; // 下一个顶点的X
+    double y1 = 0.0; // 下一个顶点的Y
+    double a = 0.0;  // 部分面积
+
+    // 以第一个点为起点，循环计算每个三角形的质心和面积
+    for (int i = 0; i < points.size(); ++i) {
+        x0 = points[i].x;
+        y0 = points[i].y;
+        x1 = points[(i + 1) % points.size()].x;
+        y1 = points[(i + 1) % points.size()].y;
+        a = x0 * y1 - x1 * y0;
+        signedArea += a;
+        centroidX += (x0 + x1) * a;
+        centroidY += (y0 + y1) * a;
+    }
+
+    signedArea *= 0.5;
+    centroidX /= (6.0 * signedArea);
+    centroidY /= (6.0 * signedArea);
+
+    // 处理由于浮点数计算导致的负面积情况
+    if (signedArea < 0) {
+        centroidX = -centroidX;
+        centroidY = -centroidY;
+    }
+
+    return Vec2{centroidX, centroidY};
 }
 
 // 初始化+预计算
@@ -42,19 +106,20 @@ void initialize_my_drone_info(std::unordered_map<std::string, MyDroneInfo>& my_d
         std::shared_ptr<Map> map, float map_min_x, float map_max_x, float map_min_y, 
         float map_max_y, float map_min_z, float map_max_z, std::vector<std::string>& unused_drone_id) {
     
-    // 方案1：当前方案 (垃圾玩意，偶尔还炸)
-    for (int i = 4; i <= 25; ++i) {
+    // 方案1：最小方案
+    for (int i = 5; i <= 25; ++i) {
         std::ostringstream os;
         os << "drone-" << std::setfill('0') << std::setw(3) << i;
         unused_drone_id.push_back(os.str());
     }
     my_drone_info["drone-001"].flying_height = 120;
-    my_drone_info["drone-002"].flying_height = 110;
-    my_drone_info["drone-003"].flying_height = 100;
-
-    my_drone_info["drone-001"].init_start_from_station_index = 0;
-    my_drone_info["drone-002"].init_start_from_station_index = 4;
-    my_drone_info["drone-003"].init_start_from_station_index = 7;
+    my_drone_info["drone-002"].flying_height = 108;
+    my_drone_info["drone-003"].flying_height = 96;
+    my_drone_info["drone-004"].flying_height = 84;
+    my_drone_info["drone-001"].init_chosen_station_index = 0;
+    my_drone_info["drone-002"].init_chosen_station_index = 1;
+    my_drone_info["drone-003"].init_chosen_station_index = 2;
+    my_drone_info["drone-004"].init_chosen_station_index = 3;
     
 
     // 方案2：适中方案（空域均分，低空太慢）
@@ -64,18 +129,15 @@ void initialize_my_drone_info(std::unordered_map<std::string, MyDroneInfo>& my_d
     //     unused_drone_id.push_back(os.str());
     // }
     // my_drone_info["drone-001"].flying_height = 120;
-    // my_drone_info["drone-002"].flying_height = 110;
-    // my_drone_info["drone-003"].flying_height = 100;
-    // my_drone_info["drone-004"].flying_height = 90;
-    // my_drone_info["drone-005"].flying_height = 80;
-    // my_drone_info["drone-006"].flying_height = 70;
-
-    // my_drone_info["drone-001"].init_start_from_station_index = 0;
-    // my_drone_info["drone-002"].init_start_from_station_index = 4;
-    // my_drone_info["drone-003"].init_start_from_station_index = 7;
-    // my_drone_info["drone-004"].init_start_from_station_index = 1;
-    // my_drone_info["drone-005"].init_start_from_station_index = 2;
-    // my_drone_info["drone-006"].init_start_from_station_index = 3;
+    // my_drone_info["drone-002"].flying_height = 108;
+    // my_drone_info["drone-003"].flying_height = 96;
+    // my_drone_info["drone-004"].flying_height = 84;
+    // my_drone_info["drone-005"].flying_height = 72;
+    // my_drone_info["drone-001"].init_chosen_station_index = 0;
+    // my_drone_info["drone-002"].init_chosen_station_index = 4;
+    // my_drone_info["drone-003"].init_chosen_station_index = 7;
+    // my_drone_info["drone-004"].init_chosen_station_index = 1;
+    // my_drone_info["drone-005"].init_chosen_station_index = 2;
 
     // Iterate through the map to get all the keys
     for (auto& pair : my_drone_info) {
@@ -115,7 +177,7 @@ void initialize_my_drone_info(std::unordered_map<std::string, MyDroneInfo>& my_d
                     points_data_polylidar.push_back(point_x);
                     double point_y = static_cast<double>(i);
                     points_data_polylidar.push_back(point_y);
-                    points_data_raw.push_back({j,i});
+                    points_data_raw.push_back({point_x,point_y});
                 }
             }
         }
@@ -143,34 +205,47 @@ void initialize_my_drone_info(std::unordered_map<std::string, MyDroneInfo>& my_d
         {
             // 第2.1步：稠密边界点
             // 创建一个新的Vec3 vector来存储提取的点
-            std::vector<Vec2> extracted_points;
-            extracted_points.reserve(polygons[i].shell.size()); // 优化，避免多次重新分配内存
+            std::vector<Vec2> original_points;
+            original_points.reserve(polygons[i].shell.size()); // 优化，避免多次重新分配内存
             // 从后往前遍历索引数组
             for (auto it = polygons[i].shell.rbegin(); it != polygons[i].shell.rend(); ++it) {
                 // 根据索引提取点并添加到新的vector中
-                extracted_points.push_back(points_data_raw[*it]);
+                original_points.push_back(points_data_raw[*it]);
             }
 
             // 第2.2步：稀疏边界点
-            std::vector<Vec2> poly_boundary_points;
-            const double eps = 1e-10; // 可以调整精度
-            for (int j = 0; j < extracted_points.size(); ++j) {
-                // 计算当前点、前一个点和后一个点
-                const Vec2& curr = extracted_points[j];
-                const Vec2& prev = extracted_points[j == 0 ? extracted_points.size() - 1 : j - 1];
-                const Vec2& next = extracted_points[(j + 1) % extracted_points.size()];
-                // 如果叉积不为零，意味着有一个拐点
-                if (std::abs(cross(prev, curr, next)) > eps) {
-                    poly_boundary_points.push_back(curr);
+            std::vector<Vec2> simplified_points;
+            // simplified_points = original_points; // 不简化对比
+            // const double min_edge_length = 4; // 调整相近的点
+            const double angle_eps = 5; // 设定一个阈值，例如10度，可以根据需要调整
+            // Vec2 center = calculatePolygonCentroid(original_points);
+            for (int i = 0; i < original_points.size(); ++i) {
+                const Vec2& prev = original_points[i == 0 ? original_points.size() - 1 : i - 1];
+                const Vec2& curr = original_points[i];
+                const Vec2& next = original_points[(i + 1) % original_points.size()];
+                
+                // // 检查当前边是否足够长
+                // if (norm(Vec2{curr.x - prev.x, curr.y - prev.y}) < min_edge_length) {
+                //     // 如果当前边不够长，比较与中心点的距离，保留较远的点
+                //     double dist_to_center_curr = norm(Vec2{center.x - curr.x, center.y - curr.y});
+                //     double dist_to_center_prev = norm(Vec2{center.x - prev.x, center.y - prev.y});
+                //     if (dist_to_center_curr < dist_to_center_prev) {
+                //         continue; // 跳过当前点，因为它比前一个点更接近中心
+                //     }
+                // }
+                
+                // 使用角度判断是否为关键拐点
+                if (!areCollinear(prev, curr, next, angle_eps)) {
+                    simplified_points.push_back(curr);
                 }
             }
 
             // 第2.3步：输出这一块的部分json段
             json_stream << "[";
-            for (size_t j = 0; j < poly_boundary_points.size(); ++j) {
-                json_stream << "{\"x\": " << poly_boundary_points[j].x
-                            << ", \"y\": " << poly_boundary_points[j].y << "}";
-                if (j < poly_boundary_points.size() - 1) {
+            for (size_t j = 0; j < simplified_points.size(); ++j) {
+                json_stream << "{\"x\": " << simplified_points[j].x
+                            << ", \"y\": " << simplified_points[j].y << "}";
+                if (j < simplified_points.size() - 1) {
                     json_stream << ",";
                 }
             }

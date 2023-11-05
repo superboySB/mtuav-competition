@@ -22,13 +22,15 @@ using cargoes_info = std::map<int, mtuav::CargoInfo>;
 struct MyDroneInfo {
     bool has_init;
     bool has_sussessor;
-    int init_start_from_station_index;
+    bool cargo_info_unchanged;
+    int init_chosen_station_index;
     int drone_status;
     double drone_battery;
     double flying_height;
 
     std::vector<std::vector<int>> static_grid;
     std::string map_json;
+    std::vector<int> current_cargo_ids;
     std::vector<int> unfinished_cargo_ids;
     std::vector<int> black_cargo_list;
     
@@ -42,7 +44,8 @@ struct MyDroneInfo {
     // 构造函数，可以考虑预置黑名单
     // black_cargo_list({41,337,79,187})
     MyDroneInfo() : flying_height(120), has_sussessor(false), drone_battery(100), 
-        has_init(false), unfinished_cargo_ids({-1, -1, -1})
+        has_init(false), unfinished_cargo_ids({-1, -1, -1}),  drone_status(0),
+        current_cargo_ids({-1,-1,-1}), cargo_info_unchanged(true)
        {
         target_charging_position.x =-1;
         target_charging_position.y =-1;

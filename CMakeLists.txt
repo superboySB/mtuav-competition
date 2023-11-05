@@ -25,12 +25,10 @@ include_directories(path_finding/include/)
 include_directories(api/)
 link_directories(libs/)
 
-
 # 美团主文件
 set(TEST_MAIN_SRC algorithm/sdk_test_main.cpp
     ${PROJECT_SOURCE_DIR}/algorithm/src/algorithm.cpp
     ${PROJECT_SOURCE_DIR}/algorithm/src/current_game_info.cpp
-    # path_finding/src/tinyxml2.cpp
 )
 add_executable(mtuav_sdk_example ${TEST_MAIN_SRC})
 target_link_libraries(mtuav_sdk_example 
@@ -46,21 +44,6 @@ target_link_libraries(mtuav_sdk_example
 set(TEST_GO_SRC tests/test_golang.cpp)
 add_executable(test_go ${TEST_GO_SRC})
 target_link_libraries(test_go -lpathfindwrapper -lpthread -lglog)
-
-# 添加SIPP的单独测试路径
-set(SIPP_SRC
-    path_finding/src/main.cpp  
-    path_finding/src/tinyxml2.cpp
-    path_finding/src/xmlLogger.cpp 
-    path_finding/src/mission.cpp 
-    path_finding/src/map.cpp 
-    path_finding/src/task.cpp
-    path_finding/src/config.cpp 
-    path_finding/src/dynamicobstacles.cpp
-    path_finding/src/aa_sipp.cpp
-    path_finding/src/constraints.cpp)
-add_executable(path_finding ${SIPP_SRC})
-target_link_libraries(path_finding -lpthread -lglog)
 
 # 添加ortools的单独测试路径
 set(TEST_ORTOOLS_SRC tests/test_ortools.cpp)

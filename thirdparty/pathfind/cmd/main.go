@@ -24,6 +24,7 @@ import (
 	"image"
 	"image/color"
 	"log"
+	"os"
 	"os/exec"
 	"runtime"
 	"time"
@@ -54,8 +55,8 @@ func main() {
 	fmt.Println("Serving demo at " + url)
 	err := canvas.ListenAndServe(*http, run, &canvas.Options{
 		Title:             "Path finding demo",
-		Width:             800,
-		Height:            600,
+		Width:             2000,
+		Height:            2000,
 		ScaleToPageHeight: true,
 		EnabledEvents: []canvas.Event{
 			canvas.MouseDownEvent{},
@@ -70,16 +71,16 @@ func main() {
 }
 
 func run(ctx *canvas.Context) {
-	polygons, size, err := polygonsFromJSON([]byte(floorPlan))
+	// polygons, size, err := polygonsFromJSON([]byte(floorPlan))
 
-	// // 设定文件的绝对路径
-	// floorPlanFilePath := "/workspace/mtuav-competition/log/map-drone-003.json"
-	// // 从文件中读取floor plan
-	// floorPlanBytes, err := os.ReadFile(floorPlanFilePath)
-	// if err != nil {
-	// 	log.Fatalf("failed to read floor plan file: %v", err)
-	// }
-	// polygons, size, err := polygonsFromJSON(floorPlanBytes)
+	// 设定文件的绝对路径
+	floorPlanFilePath := "/workspace/mtuav-competition/log/map-drone-001.json"
+	// 从文件中读取floor plan
+	floorPlanBytes, err := os.ReadFile(floorPlanFilePath)
+	if err != nil {
+		log.Fatalf("failed to read floor plan file: %v", err)
+	}
+	polygons, size, err := polygonsFromJSON(floorPlanBytes)
 
 	if err != nil {
 		log.Fatal(err)

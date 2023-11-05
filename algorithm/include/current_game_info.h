@@ -41,11 +41,6 @@ static std::shared_ptr<DynamicGameInfo> current_game_info = nullptr;
 // 单例标志位
 static std::once_flag singleton_flag;
 
-// std::string GenerateMapNewXML(int width, int height, const std::vector<std::vector<int>>& grid);
-// std::string GenerateTaskNewXML(const Vec3& start, const Vec3& end);
-// void SaveXMLToFile(const std::string& xmlContent, std::string mode, std::string drone_id);
-// std::vector<Vec3> ReadXMLFromFile(std::string read_dir, double flying_height);
-
 }  // namespace mtuav::algorithm
 
 #endif
