@@ -5,6 +5,9 @@
 #include "libpathfindwrapper.h" 
 #include <cmath>
 #include "math.h"
+#include <fstream>
+#include <sstream>
+#include "Polylidar/Polylidar.hpp"
 
 
 namespace mtuav::algorithm {
@@ -49,10 +52,217 @@ void Algorithm::set_planner(std::shared_ptr<Planner> input_planner) {
 
 const double epsilon = 1e-4;
 
+// 计算两个向量的点积
+double dot(const Vec2& v1, const Vec2& v2) {
+    return v1.x * v2.x + v1.y * v2.y;
+}
+
+// 计算向量的模长
+double norm(const Vec2& v) {
+    return std::sqrt(v.x * v.x + v.y * v.y);
+}
+
+// 计算两个向量的夹角（以度为单位）
+double angleBetween(const Vec2& v1, const Vec2& v2) {
+    double dot_product = dot(v1, v2);
+    double norms_product = norm(v1) * norm(v2);
+    double cos_angle = dot_product / norms_product;
+    // 防止由于浮点数精度问题导致acos函数的输入超出[-1, 1]的范围
+    cos_angle = std::max(-1.0, std::min(1.0, cos_angle));
+    double angle_radians = std::acos(cos_angle);
+    double angle_degrees = angle_radians * (180.0 / M_PI);
+    return angle_degrees;
+}
+
+// 判断三个点是否几乎共线
+bool areCollinear(const Vec2& p1, const Vec2& p2, const Vec2& p3, const double angle_eps) {
+    Vec2 v1 = {p2.x - p1.x, p2.y - p1.y};
+    Vec2 v2 = {p3.x - p1.x, p3.y - p1.y};
+    double angle = angleBetween(v1, v2);
+    return std::abs(angle) < angle_eps || std::abs(angle - 180.0) < angle_eps;
+}
+
+Vec2 calculatePolygonCentroid(const std::vector<Vec2>& points) {
+    if (points.size() < 3) {
+        // 对于少于三个点的情况，无法定义多边形，返回错误或默认值
+        return Vec2{0, 0};
+    }
+
+    double centroidX = 0.0, centroidY = 0.0;
+    double signedArea = 0.0;
+    double x0 = 0.0; // 当前顶点的X
+    double y0 = 0.0; // 当前顶点的Y
+    double x1 = 0.0; // 下一个顶点的X
+    double y1 = 0.0; // 下一个顶点的Y
+    double a = 0.0;  // 部分面积
+
+    // 以第一个点为起点，循环计算每个三角形的质心和面积
+    for (int i = 0; i < points.size(); ++i) {
+        x0 = points[i].x;
+        y0 = points[i].y;
+        x1 = points[(i + 1) % points.size()].x;
+        y1 = points[(i + 1) % points.size()].y;
+        a = x0 * y1 - x1 * y0;
+        signedArea += a;
+        centroidX += (x0 + x1) * a;
+        centroidY += (y0 + y1) * a;
+    }
+
+    signedArea *= 0.5;
+    centroidX /= (6.0 * signedArea);
+    centroidY /= (6.0 * signedArea);
+
+    // 处理由于浮点数计算导致的负面积情况
+    if (signedArea < 0) {
+        centroidX = -centroidX;
+        centroidY = -centroidY;
+    }
+
+    return Vec2{centroidX, centroidY};
+}
+
+// 初始化+预计算
+void initialize_my_drone_info(std::unordered_map<std::string, MyDroneInfo>& my_drone_info, 
+        std::shared_ptr<Map> map, float map_min_x, float map_max_x, float map_min_y, 
+        float map_max_y, float map_min_z, float map_max_z, std::vector<std::string>& unused_drone_id) {
+
+    // Iterate through the map to get all the keys
+    for (auto& pair : my_drone_info) {
+        // 第一步：利用Query提取grid map
+        int step = 1; // assuming each cell represents a 1m x 1m area
+        float z = my_drone_info[pair.first].flying_height; // height at which the 2D map is generated
+
+        std::vector<std::vector<int>> grid(static_cast<int>((map_max_y - map_min_y) / step), 
+                    std::vector<int>(static_cast<int>((map_max_x - map_min_x) / step), 0));
+        
+        for (float x = map_min_x; x <= map_max_x; x += step) {
+            for (float y = map_min_y; y <= map_max_y; y += step) {
+                const mtuav::Voxel* voxel = map->Query(x, y, z);
+                if (voxel) {
+                    int ix = (x - map_min_x) / step;
+                    int iy = (y - map_min_y) / step;
+                    // Use the distance value to set the grid cell value
+                    if (voxel->distance <= 4) {
+                        grid[iy][ix] = 1;
+                    } else {
+                        grid[iy][ix] = 0;
+                    }
+                }
+            }
+        }
+        my_drone_info[pair.first].static_grid = grid;
+        
+        // 第二步：从grid map里提取边界点
+        int grid_width = grid[0].size();
+        int grid_height = grid.size();
+        std::vector<Vec2> points_data_raw;
+        std::vector<double> points_data_polylidar;
+        for (int i=0; i<grid_height; i++){
+            for (int j=0; j<grid_width; j++){
+                if (grid[i][j]){
+                    double point_x = static_cast<double>(j);
+                    points_data_polylidar.push_back(point_x);
+                    double point_y = static_cast<double>(i);
+                    points_data_polylidar.push_back(point_y);
+                    points_data_raw.push_back({point_x,point_y});
+                }
+            }
+        }
+
+        std::ostringstream json_stream;
+        json_stream << R"json({
+            "canvas": {"w": )json" << grid_width << R"json(, "h": )json" << grid_height << R"json(},
+            "polygons": [
+                [
+                {"x": 0, "y": 0},
+                {"x": )json" << grid_width << R"json(, "y": 0},
+                {"x": )json" << grid_width << R"json(, "y": )json" << grid_height << R"json(},
+                {"x": 0, "y": )json" << grid_height << R"json(}
+                ],
+        )json";
+
+        std::vector<std::size_t> shape = {points_data_polylidar.size() / 2, 2};
+        Polylidar::Matrix<double> points(points_data_polylidar.data(), shape[0], shape[1]);
+        Polylidar::Polylidar3D pl(0.0, 2.0, 1, 3);
+        Polylidar::MeshHelper::HalfEdgeTriangulation mesh;
+        Polylidar::Planes planes;
+        Polylidar::Polygons polygons;
+        std:tie(mesh, planes, polygons) = pl.ExtractPlanesAndPolygons(points);
+        for (int i=0; i< polygons.size(); i++)
+        {
+            // 第2.1步：稠密边界点
+            // 创建一个新的Vec3 vector来存储提取的点
+            std::vector<Vec2> original_points;
+            original_points.reserve(polygons[i].shell.size()); // 优化，避免多次重新分配内存
+            // 从后往前遍历索引数组
+            for (auto it = polygons[i].shell.rbegin(); it != polygons[i].shell.rend(); ++it) {
+                // 根据索引提取点并添加到新的vector中
+                original_points.push_back(points_data_raw[*it]);
+            }
+
+            // 第2.2步：稀疏边界点
+            std::vector<Vec2> simplified_points;
+            // simplified_points = original_points; // 不简化对比
+            // const double min_edge_length = 4; // 调整相近的点
+            const double angle_eps = 5; // 设定一个阈值，例如10度，可以根据需要调整
+            // Vec2 center = calculatePolygonCentroid(original_points);
+            for (int i = 0; i < original_points.size(); ++i) {
+                const Vec2& prev = original_points[i == 0 ? original_points.size() - 1 : i - 1];
+                const Vec2& curr = original_points[i];
+                const Vec2& next = original_points[(i + 1) % original_points.size()];
+                
+                // // 检查当前边是否足够长
+                // if (norm(Vec2{curr.x - prev.x, curr.y - prev.y}) < min_edge_length) {
+                //     // 如果当前边不够长，比较与中心点的距离，保留较远的点
+                //     double dist_to_center_curr = norm(Vec2{center.x - curr.x, center.y - curr.y});
+                //     double dist_to_center_prev = norm(Vec2{center.x - prev.x, center.y - prev.y});
+                //     if (dist_to_center_curr < dist_to_center_prev) {
+                //         continue; // 跳过当前点，因为它比前一个点更接近中心
+                //     }
+                // }
+                
+                // 使用角度判断是否为关键拐点
+                if (!areCollinear(prev, curr, next, angle_eps)) {
+                    simplified_points.push_back(curr);
+                }
+            }
+
+            // 第2.3步：输出这一块的部分json段
+            json_stream << "[";
+            for (size_t j = 0; j < simplified_points.size(); ++j) {
+                json_stream << "{\"x\": " << simplified_points[j].x
+                            << ", \"y\": " << simplified_points[j].y << "}";
+                if (j < simplified_points.size() - 1) {
+                    json_stream << ",";
+                }
+            }
+            json_stream << "]";
+
+            if (i < polygons.size() - 1) {
+                json_stream << ",";
+            }
+        }
+        json_stream << R"json(]})json";
+        std::string floorPlan = json_stream.str();
+        pair.second.map_json = floorPlan;
+
+        // 用于调试json形式
+        std::ostringstream filename_stream;
+        filename_stream << "/workspace/mtuav-competition/log/map-" << pair.first << ".json";
+        std::string filename = filename_stream.str();
+        std::ofstream file_out(filename);
+        file_out << json_stream.str();
+        file_out.close();
+    }
+}
+
+
 bool operator==(const Vec3& a, const Vec3& b) {
-    return std::fabs(a.x - b.x) < epsilon &&
-           std::fabs(a.y - b.y) < epsilon &&
-           std::fabs(a.z - b.z) < epsilon;
+    return std::fabs(a.x - b.x) < epsilon && std::fabs(a.y - b.y) < epsilon && std::fabs(a.z - b.z) <= 4.01;
+}
+
+bool operator!=(const Vec3& a, const Vec3& b) {
+    return std::fabs(a.x - b.x) > epsilon || std::fabs(a.y - b.y) > epsilon;
 }
 
 bool black_2d_position_check(const Vec3& position, const Vec3& target_position, const double bx, const double by) {
@@ -233,7 +443,7 @@ std::vector<CargoInfo> selectAndOrderCargoes(
 
 void removeAcceptedCargoes(std::vector<CargoInfo>& cargoes_to_delivery_and_no_accepted, 
                             const std::vector<int>& unfinished_order) {
-    // 删除所有id出现在unfinished_order中的元素
+    
     cargoes_to_delivery_and_no_accepted.erase(
         std::remove_if(
             cargoes_to_delivery_and_no_accepted.begin(), 
@@ -262,6 +472,10 @@ void removeConflictCargoes(std::vector<CargoInfo>& cargoes_to_delivery_and_no_ac
             cargoes_to_delivery_and_no_accepted.end(),
             [&unfinished_order, safety_distance,cargo_info, flying_height,black_list,factor,
                     all_battery_stations, static_grid](const CargoInfo& cargo) {
+                // 删除所有id出现在当前所有飞机unfinished_order中的元素
+                if (std::find(unfinished_order.begin(), unfinished_order.end(), cargo.id) != unfinished_order.end()){
+                    return true;
+                }
 
                 // 会有地点很高的外卖
                 if ((cargo.position.z >= flying_height) || (cargo.target_position.z >= flying_height))  {
@@ -315,6 +529,70 @@ int64_t myAlgorithm::solve() {
     // 依据需求计算所需的sleep time
     int64_t sleep_time_ms = 500;
     int64_t takeoff_pending_time_ms = 5000;
+    double dangerous_battery = 50;
+    // 处理无人机信息，找出当前未装载货物的无人机集合
+    std::vector<DroneStatus> drones_to_pick;
+    std::vector<DroneStatus> drones_need_recharge;
+    std::vector<DroneStatus> drones_need_break;
+    std::vector<DroneStatus> drones_to_delivery;
+    std::vector<DroneStatus> drones_to_hover;
+    auto available_battery_stations = this->_task_info->battery_stations;
+
+    // 初始化无人机状态机
+    if (my_drone_info.empty()){
+        LOG(INFO) << "Initialize our used drones!";
+
+        // 本地测试用方案
+        for (int i = 5; i <= 25; ++i) {
+            std::ostringstream os;
+            os << "drone-" << std::setfill('0') << std::setw(3) << i;
+            unused_drone_id.push_back(os.str());
+        }
+        my_drone_info["drone-001"].flying_height = 120;
+        my_drone_info["drone-002"].flying_height = 108;
+        my_drone_info["drone-003"].flying_height = 96;
+        my_drone_info["drone-004"].flying_height = 84;
+        my_drone_info["drone-001"].init_chosen_station_index = 0;
+        my_drone_info["drone-002"].init_chosen_station_index = 1;
+        my_drone_info["drone-003"].init_chosen_station_index = 2;
+        my_drone_info["drone-004"].init_chosen_station_index = 3;
+        
+        // 在线测试用方案
+        // for (int i = 6; i <= 25; ++i) {
+        //     std::ostringstream os;
+        //     os << "drone-" << std::setfill('0') << std::setw(3) << i;
+        //     unused_drone_id.push_back(os.str());
+        // }
+        // my_drone_info["drone-001"].flying_height = 120;
+        // my_drone_info["drone-002"].flying_height = 108;
+        // my_drone_info["drone-003"].flying_height = 96;
+        // my_drone_info["drone-004"].flying_height = 84;
+        // my_drone_info["drone-005"].flying_height = 72;
+        // my_drone_info["drone-001"].init_chosen_station_index = 0;
+        // my_drone_info["drone-002"].init_chosen_station_index = 4;
+        // my_drone_info["drone-003"].init_chosen_station_index = 7;
+        // my_drone_info["drone-004"].init_chosen_station_index = 1;
+        // my_drone_info["drone-005"].init_chosen_station_index = 2;
+       
+        _map->Range(&map_min_x, &map_max_x, &map_min_y, &map_max_y, &map_min_z, &map_max_z);
+        initialize_my_drone_info(my_drone_info, _map, map_min_x, map_max_x, map_min_y, map_max_y, map_min_z, map_max_z, unused_drone_id);
+
+        auto& battery_station_positions = _task_info->battery_stations;
+        for (std::size_t i = 0; i < battery_station_positions.size(); ++i) {
+            const Vec3& station = battery_station_positions[i];
+            LOG(INFO) << "battery_stations " << i << ": x = " << station.x 
+                    << ", y = " << station.y << ", z = " << station.z;
+        }
+
+        auto& landing_positions = _task_info->landing_positions;
+        for (std::size_t i = 0; i < landing_positions.size(); ++i) {
+            const Vec3& station = landing_positions[i];
+            LOG(INFO) << "landing_stations " << i << ": x = " << station.x 
+                    << ", y = " << station.y << ", z = " << station.z;
+        }
+
+        return sleep_time_ms;
+    }
 
     // 处理订单信息，找出可进行配送的订单集合
     std::vector<CargoInfo> cargoes_to_delivery;
@@ -350,16 +628,8 @@ int64_t myAlgorithm::solve() {
     }
     LOG(INFO) << "cargo info size: " << this->_cargo_info.size()
               << ", cargo to delivery size: " << cargoes_to_delivery.size();
-
-    // 处理无人机信息，找出当前未装载货物的无人机集合
-    std::vector<DroneStatus> drones_to_pick;
-    std::vector<DroneStatus> drones_need_recharge;
-    std::vector<DroneStatus> drones_need_break;
-    std::vector<DroneStatus> drones_to_delivery;
-    std::vector<DroneStatus> drones_to_hover;
     
-    // 维护状态机
-    bool all_status_unchange_flag = true;
+    // 维护无人机状态机
     for (auto& drone : this->_drone_info) {
         if(my_drone_info.find(drone.drone_id) == my_drone_info.end()){
             LOG(INFO) << "Now we do not use: " << drone.drone_id;
@@ -373,11 +643,8 @@ int64_t myAlgorithm::solve() {
                       << ", has init: "<< my_drone_info[drone.drone_id].has_init;
             
             my_drone_info[drone.drone_id].drone_position = drone.position;
-            if ((drone.status !=my_drone_info[drone.drone_id].drone_status) || (!my_drone_info[drone.drone_id].has_init)){
-                all_status_unchange_flag = false;
-            }
 
-            if ((drone.delivering_cargo_ids == my_drone_info[drone.drone_id].current_cargo_ids) && (my_drone_info[drone.drone_id].has_init)){
+            if ((drone.delivering_cargo_ids == my_drone_info[drone.drone_id].current_cargo_ids)){
                 my_drone_info[drone.drone_id].cargo_info_unchanged = true;
             }
             else{
@@ -397,10 +664,6 @@ int64_t myAlgorithm::solve() {
             
         }
     }
-    // if (all_status_unchange_flag){
-    //     LOG(INFO) << "No drone's status changes!";
-    //     return sleep_time_ms;
-    // }
 
     for (auto& drone : this->_drone_info) {
         if(my_drone_info.find(drone.drone_id) == my_drone_info.end()){
@@ -409,32 +672,32 @@ int64_t myAlgorithm::solve() {
         MyDroneInfo& mydrone = my_drone_info[drone.drone_id];
 
         // 让有问题的飞机光荣退休，最好不要，罚分实在是太亏
-        if (mydrone.drone_status == Status::CRASH){
-            if (!mydrone.has_sussessor && !unused_drone_id.empty()){
-                LOG(INFO) << drone.drone_id << " - DroneCrashType: " << drone.crash_type << ", bye!!!";
-                mydrone.unfinished_cargo_ids.clear();
-                mydrone.target_break_position = drone.position;
-                mydrone.has_sussessor = true;
-                mydrone.target_charging_position.x =-1;
-                mydrone.target_charging_position.y =-1;
-                mydrone.target_charging_position.z =-1;
+        // if (mydrone.drone_status == Status::CRASH){
+        //     if (!mydrone.has_sussessor && !unused_drone_id.empty()){
+        //         LOG(INFO) << drone.drone_id << " - DroneCrashType: " << drone.crash_type << ", bye!!!";
+        //         mydrone.unfinished_cargo_ids.clear();
+        //         mydrone.target_break_position = drone.position;
+        //         mydrone.has_sussessor = true;
+        //         mydrone.target_charging_position.x =-1;
+        //         mydrone.target_charging_position.y =-1;
+        //         mydrone.target_charging_position.z =-1;
 
-                std::string new_drone_id = unused_drone_id.front();
-                // DroneStatus new_drone_status = this->_drone_info.at(new_drone_id);
-                my_drone_info[new_drone_id].flying_height = mydrone.flying_height;
-                my_drone_info[new_drone_id].has_init = true; // 没有初始化必要了
-                my_drone_info[new_drone_id].static_grid = mydrone.static_grid;
-                my_drone_info[new_drone_id].init_chosen_station_index = mydrone.init_chosen_station_index;
-                my_drone_info[new_drone_id].drone_status = Status::READY;
-                my_drone_info[new_drone_id].map_json = mydrone.map_json;
-                unused_drone_id.erase(unused_drone_id.begin());
-            }
-            continue;
-        }
+        //         std::string new_drone_id = unused_drone_id.front();
+        //         // DroneStatus new_drone_status = this->_drone_info.at(new_drone_id);
+        //         my_drone_info[new_drone_id].flying_height = mydrone.flying_height;
+        //         my_drone_info[new_drone_id].has_init = true; // 没有初始化必要了
+        //         my_drone_info[new_drone_id].static_grid = mydrone.static_grid;
+        //         my_drone_info[new_drone_id].init_chosen_station_index = mydrone.init_chosen_station_index;
+        //         my_drone_info[new_drone_id].drone_status = Status::READY;
+        //         my_drone_info[new_drone_id].map_json = mydrone.map_json;
+        //         unused_drone_id.erase(unused_drone_id.begin());
+        //     }
+        //     continue;
+        // }
+
 
         // 不安全信息判断1：其它飞机正在使用加油站
         bool unsafe_flag = false;
-        auto available_battery_stations = this->_task_info->battery_stations;
         // std::sort(available_battery_stations.begin(), available_battery_stations.end(), [drone](Vec3 p1, Vec3 p2) {
         //     Vec3 the_drone_pos = drone.position;
         //     double p1_to_drone = std::sqrt(std::pow(p1.x - the_drone_pos.x, 2) +
@@ -472,21 +735,26 @@ int64_t myAlgorithm::solve() {
         //     drones_need_recharge.push_back(drone);
         //     continue;
         // }
-        
-        if ((mydrone.drone_status == Status::READY) && (mydrone.drone_battery < 60) &&
-          (mydrone.target_charging_position.x == -1)) {
-            // int the_station_idx = 0;
-            Vec3 the_nearest_station = available_battery_stations.at(mydrone.init_chosen_station_index);
-            mydrone.target_charging_position = the_nearest_station;
+        if ((mydrone.drone_status == Status::READY) && (!mydrone.has_init) && (mydrone.target_charging_position.x == -1)){
+            mydrone.target_charging_position =  available_battery_stations.at(mydrone.init_chosen_station_index);
+        }
+
+        if ((mydrone.drone_battery < dangerous_battery) && (mydrone.target_charging_position.x == -1)){
+            mydrone.target_charging_position = available_battery_stations.at(mydrone.init_chosen_station_index);
+        }
+
+        if ((mydrone.drone_status == Status::READY) && (mydrone.target_charging_position.x != -1) && (mydrone.drone_position!=mydrone.target_charging_position)){
             drones_need_recharge.push_back(drone);
             continue;
         }
+
         if ((mydrone.drone_battery > 95) && (mydrone.target_charging_position.x != -1)){
-                mydrone.target_charging_position.x = -1;
-                mydrone.target_charging_position.y = -1;
-                mydrone.target_charging_position.z = -1;
-                mydrone.cargo_info_unchanged = false;
-            }
+            mydrone.has_init = true; // 到达指定站点，初始化结束
+            mydrone.target_charging_position.x = -1;
+            mydrone.target_charging_position.y = -1;
+            mydrone.target_charging_position.z = -1;
+            mydrone.wait_to_fly = true;
+        }
 
         if (mydrone.drone_status == Status::READY) {
             double current_weight = 0;
@@ -502,11 +770,8 @@ int64_t myAlgorithm::solve() {
                 DroneLimits dl = this->_task_info->drones.front().drone_limits;
                 std::vector<CargoInfo> cargoes_to_delivery_and_no_accepted = cargoes_to_delivery;  // 拷贝一个临时变量
 
+                // 删掉已经被其它飞机接单的cargo、其它飞机未来落点下的cargo（TODO：目前是否过于保守）
                 for (const auto& pair : my_drone_info) {
-                    // 删掉已经被其它飞机接单的cargo
-                    removeAcceptedCargoes(cargoes_to_delivery_and_no_accepted, pair.second.unfinished_cargo_ids);
-
-                    // 删掉其它飞机未来落点下的cargo（TODO：目前是否过于保守）
                     removeConflictCargoes(cargoes_to_delivery_and_no_accepted, pair.second.unfinished_cargo_ids,
                                         this->_cargo_info, 10, pair.second.flying_height, pair.second.black_cargo_list,
                                         this->_task_info->battery_stations, pair.second.static_grid);
@@ -514,14 +779,22 @@ int64_t myAlgorithm::solve() {
 
                 // 以可行解为优先的多步贪心（速度估计暂时采用保守的15m/s，因为直接飞直线大概能到19，但不知道避障的开销)
                 // TODO: 实测发现多单，还是有点复杂的（主要是去往充电站的问题）
-                std::vector<int> unfinished_order;
                 double max_orders = 1;
                 std::vector<CargoInfo> delivery_order = selectAndOrderCargoes(cargoes_to_delivery_and_no_accepted, 
                                         drone.position, current_weight, dl.max_weight, max_orders,
                                         15, 10, 10, 0);
                 if (!delivery_order.empty()){
+                    std::vector<int> unfinished_order;
                     CargoInfo earliest_order = delivery_order.front();
                     unfinished_order.push_back(earliest_order.id);
+                    while (unfinished_order.size() < dl.max_cargo_slots) {
+                        unfinished_order.push_back(-1); 
+                    }
+                    mydrone.unfinished_cargo_ids = unfinished_order;
+                    mydrone.wait_to_fly = true;
+                    drones_to_pick.push_back(drone);
+                } else {
+                    LOG(INFO) << drone.drone_id << " - can not find any proper cargos....";
                 }
                 // 以下是多单相关代码   
                 // std::vector<int> unfinished_order;
@@ -544,29 +817,21 @@ int64_t myAlgorithm::solve() {
                 //     // 从delivery_order中移除已经加入到unfinished_order的元素
                 //     delivery_order.erase(delivery_order.begin());
                 // }
-
-                if (!unfinished_order.empty()){
-                    while (unfinished_order.size() < dl.max_cargo_slots) {
-                        unfinished_order.push_back(-1); 
-                    }
-                    my_drone_info[drone.drone_id].unfinished_cargo_ids = unfinished_order;
-                    drones_to_pick.push_back(drone);
-                } 
    
             } 
             else {
                 if ((tmp_delivering_cargo_ids[0] != tmp_unfinished_cargo_ids[0] ||
                 tmp_delivering_cargo_ids[1] != tmp_unfinished_cargo_ids[1] ||
                 tmp_delivering_cargo_ids[2] != tmp_unfinished_cargo_ids[2])){
-                    if (mydrone.cargo_info_unchanged) {
-                        LOG(INFO) << drone.drone_id << " - wait for sync and then pick....";
+                    if ((mydrone.cargo_info_unchanged) && (!mydrone.wait_to_fly)) {
+                        LOG(INFO) << drone.drone_id << " - wait for sync and then deliver....";
                     } else{
                         drones_to_pick.push_back(drone); // 没有取到所有货物，先取货物 
                     }
                 }
                 else{
                     if ((mydrone.cargo_info_unchanged) && (tmp_delivering_cargo_ids[0]==-1)) {
-                        LOG(INFO) << drone.drone_id << " - wait for sync and then deliver....";
+                        LOG(INFO) << drone.drone_id << " - wait for sync and then pick....";
                     } else{
                         drones_to_delivery.push_back(drone); // 应该已经取到所有货物了，开始配送 
                     }
@@ -577,6 +842,7 @@ int64_t myAlgorithm::solve() {
 
         // 无人机状态2:平飞
         if (mydrone.drone_status == Status::FLYING) {
+            mydrone.wait_to_fly = false;
             // if ((mydrone.drone_battery < 90) && (mydrone.has_init) 
             //   && (mydrone.target_charging_position.x ==-1)
             //   && (mydrone.target_charging_position.y ==-1)
@@ -586,12 +852,10 @@ int64_t myAlgorithm::solve() {
             //     mydrone.target_charging_position = the_nearest_station;
             //     drones_to_hover.push_back(drone);
             // } 
-            mydrone.has_init = true;
             // if (unsafe_flag){
             //     drones_to_hover.push_back(drone);
             // }
-
-            continue;
+            // continue;
         }
 
         // 无人机状态3:悬停
@@ -672,7 +936,7 @@ int64_t myAlgorithm::solve() {
         auto landing_position = the_cargo.position;
         // landing_position.z = roundUpToMultipleOf4(the_cargo.position.z);
 
-        LOG(INFO) << "go to pick cargo, id: " << the_cargo.id << ", start: " << the_cargo.position.x
+        LOG(INFO) << the_drone.drone_id << " to pick cargo, id: " << the_cargo.id << ", start: " << the_cargo.position.x
                   << " " << the_cargo.position.y << " " << the_cargo.position.z
                   << ", target: " << the_cargo.target_position.x << " "
                   << the_cargo.target_position.y << " " << the_cargo.target_position.z
@@ -746,7 +1010,7 @@ int64_t myAlgorithm::solve() {
             auto landing_position = the_cargo.target_position;
             // landing_position.z = roundUpToMultipleOf4(the_cargo.target_position.z);
 
-            LOG(INFO) << "go to deliver cargo, id: " << the_cargo.id << ", start: " << the_cargo.position.x
+            LOG(INFO) << the_drone.drone_id << " go to deliver cargo, id: " << the_cargo.id << ", start: " << the_cargo.position.x
                   << " " << the_cargo.position.y << " " << the_cargo.position.z
                   << ", target: " << the_cargo.target_position.x << " "
                   << the_cargo.target_position.y << " " << the_cargo.target_position.z
@@ -802,16 +1066,10 @@ int64_t myAlgorithm::solve() {
         
         Vec3 the_selected_station;
         the_selected_station = mydrone.target_charging_position;
-        // if (mydrone.has_init){
-        //     the_selected_station = mydrone.target_charging_position;
-        // }
-        // else{
-        //     the_selected_station = this->_task_info->battery_stations[mydrone.init_chosen_station_index];
-        // }
         auto landing_position = the_selected_station;
         // landing_position.z = roundUpToMultipleOf4(the_selected_station.z);
 
-        LOG(INFO) << "go to charge station, position: " << the_selected_station.x
+        LOG(INFO) << the_drone.drone_id << " go to charge station, position: " << the_selected_station.x
                   << " " << the_selected_station.y << " " << the_selected_station.z
                   << ", current uav position:" << the_drone.position.x << " " << the_drone.position.y << " " << the_drone.position.z
                   << ", current landing position:" << landing_position.x << " " << landing_position.y << " " << landing_position.z;  

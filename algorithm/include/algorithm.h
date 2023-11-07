@@ -23,6 +23,7 @@ struct MyDroneInfo {
     bool has_init;
     bool has_sussessor;
     bool cargo_info_unchanged;
+    bool wait_to_fly;
     int init_chosen_station_index;
     int drone_status;
     double drone_battery;
@@ -45,7 +46,7 @@ struct MyDroneInfo {
     // black_cargo_list({41,337,79,187})
     MyDroneInfo() : flying_height(120), has_sussessor(false), drone_battery(100), 
         has_init(false), unfinished_cargo_ids({-1, -1, -1}),  drone_status(0),
-        current_cargo_ids({-1,-1,-1}), cargo_info_unchanged(true)
+        current_cargo_ids({-1,-1,-1}), cargo_info_unchanged(true), wait_to_fly(false)
        {
         target_charging_position.x =-1;
         target_charging_position.y =-1;
