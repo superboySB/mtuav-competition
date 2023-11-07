@@ -30,7 +30,7 @@ import (
 	"time"
 
 	"github.com/fzipp/canvas"
-	"github.com/fzipp/pathfind"
+	"github.com/superboySB/pathfind"
 )
 
 var (

@@ -14,7 +14,7 @@ import (
 	"image"
 	"unsafe"
 
-	"github.com/fzipp/pathfind"
+	"github.com/superboySB/pathfind"
 )
 
 //export FindPath

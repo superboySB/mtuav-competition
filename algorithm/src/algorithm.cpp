@@ -122,7 +122,7 @@ Vec2 calculatePolygonCentroid(const std::vector<Vec2>& points) {
 }
 
 // 初始化+预计算
-void initialize_my_drone_info(std::unordered_map<std::string, MyDroneInfo>& my_drone_info, 
+void initialize_obstacle_info(std::unordered_map<std::string, MyDroneInfo>& my_drone_info, 
         std::shared_ptr<Map> map, float map_min_x, float map_max_x, float map_min_y, 
         float map_max_y, float map_min_z, float map_max_z, std::vector<std::string>& unused_drone_id) {
 
@@ -575,7 +575,7 @@ int64_t myAlgorithm::solve() {
         // my_drone_info["drone-005"].init_chosen_station_index = 2;
        
         _map->Range(&map_min_x, &map_max_x, &map_min_y, &map_max_y, &map_min_z, &map_max_z);
-        initialize_my_drone_info(my_drone_info, _map, map_min_x, map_max_x, map_min_y, map_max_y, map_min_z, map_max_z, unused_drone_id);
+        initialize_obstacle_info(my_drone_info, _map, map_min_x, map_max_x, map_min_y, map_max_y, map_min_z, map_max_z, unused_drone_id);
 
         auto& battery_station_positions = _task_info->battery_stations;
         for (std::size_t i = 0; i < battery_station_positions.size(); ++i) {
@@ -735,6 +735,7 @@ int64_t myAlgorithm::solve() {
         //     drones_need_recharge.push_back(drone);
         //     continue;
         // }
+
         if ((mydrone.drone_status == Status::READY) && (!mydrone.has_init) && (mydrone.target_charging_position.x == -1)){
             mydrone.target_charging_position =  available_battery_stations.at(mydrone.init_chosen_station_index);
         }
@@ -1214,13 +1215,19 @@ std::vector<Vec3> myAlgorithm::generate_waypoints_by_a_star(Vec3 start, Vec3 end
 
     // Convert the C array to a std::vector<Vec3>
     std::vector<Vec2> path(raw_result, raw_result + size);
-    std::vector<Vec3> waypoints;
-    path.erase(path.begin());
-    path.pop_back();
-    for (Vec2 point: path){
-        waypoints.push_back({point.x, point.y, my_drone_info[drone.drone_id].flying_height});
-    }
     free(raw_result);
+    std::vector<Vec3> waypoints;
+    if (size < 2){
+        waypoints.push_back({-1,-1,-1});  // 把不可达的因素考虑进来吧
+    }
+    else{
+        path.erase(path.begin());
+        path.pop_back();
+        
+        for (Vec2 point: path){
+            waypoints.push_back({point.x, point.y, my_drone_info[drone.drone_id].flying_height});
+        }
+    }
 
     return waypoints;
 }

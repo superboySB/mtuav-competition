@@ -47,7 +47,6 @@ git clone --recursive https://github.com/superboySB/mtuav-competition && cd mtua
 ```sh
 cd /workspace/mtuav-competition/thirdparty/pathfind
 go mod tidy
-go mod download
 ```
 将这些模块放在C++的链接里面
 ```sh
