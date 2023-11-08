@@ -9,6 +9,7 @@
 #include "mtuav_sdk_planner.h"
 #include "mtuav_sdk_types.h"
 #include "planner.h"
+#include "libpathfindwrapper.h" 
 #include "traj_generation.hpp"
 #include <unordered_map>
 #include <future>
@@ -20,33 +21,30 @@ using cargoes_info = std::map<int, mtuav::CargoInfo>;
 
 // 用于表示我想飞的无人机的信息
 struct MyDroneInfo {
-    bool has_init;
-    bool has_sussessor;
     bool cargo_info_unchanged;
     bool wait_to_fly;
-    int init_chosen_station_index;
     int drone_status;
     double drone_battery;
     double flying_height;
+    
+    Vec3 drone_position;
+    Vec3 target_break_position;  // 我看都离充电站挺近的，可以用于处理充电站纠纷的问题
+    Vec3 target_charging_position;
+    Vec3 flightplan_takeoff_position;
+    Vec3 flightplan_land_position;
 
-    std::vector<std::vector<int>> static_grid;
-    std::string map_json;
     std::vector<int> current_cargo_ids;
     std::vector<int> unfinished_cargo_ids;
     std::vector<int> black_cargo_list;
-    
-    Vec3 drone_position;
-    Vec3 target_break_position;  // TODO：还不清楚怎么用
-    Vec3 target_charging_position;
-    // double next_flight_time;
-    // std::vector<mtuav::Segment> path_segs;  // TODO: 后续准备尝试插入悬停段，实现时空上完全无冲突
-    // int current_seg_id;
+    std::vector<std::vector<int>> static_grid;
+    std::vector<std::vector<int>> dynamic_grid; // 用于避障
+    std::vector<Vec3> median_flying_waypoints;
 
     // 构造函数，可以考虑预置黑名单
     // black_cargo_list({41,337,79,187})
-    MyDroneInfo() : flying_height(120), has_sussessor(false), drone_battery(100), 
-        has_init(false), unfinished_cargo_ids({-1, -1, -1}),  drone_status(0),
-        current_cargo_ids({-1,-1,-1}), cargo_info_unchanged(true), wait_to_fly(false)
+    MyDroneInfo(): flying_height(120), drone_battery(100), unfinished_cargo_ids({-1, -1, -1}),  drone_status(0),
+        current_cargo_ids({-1,-1,-1}), cargo_info_unchanged(true), wait_to_fly(false),
+        flightplan_takeoff_position({-1,-1,-1}), flightplan_land_position({-1,-1,-1})
        {
         target_charging_position.x =-1;
         target_charging_position.y =-1;
@@ -100,17 +98,21 @@ class myAlgorithm : public Algorithm {
     int64_t solve();
 
     // * 需要选手自行添加所需的函数
+    float map_min_x, map_max_x, map_min_y, map_max_y, map_min_z, map_max_z;
+    std::unordered_map<std::string, MyDroneInfo> my_drone_info; 
+    void initialize_static_grid();
+    void add_takeoff_grid(std::string this_drone_id, double safer_distance, double current_height);
+    void add_flying_grid(std::string this_drone_id, double safer_distance, double current_height);
+    void add_landing_grid(std::string this_drone_id, double safer_distance, double current_height);
+    void update_dynamic_grid(double safe_distance, double factor);
+
     // 示例：给定起点、终点，返回无人机WayPoint飞行轨迹与飞行时间
     // std::tuple<std::vector<Segment>, int64_t> waypoints_generation(Vec3 start, Vec3 end);
     // 示例：给定起点、终点与无人机，返回无人机trajectory飞行轨迹与飞行时间
-    std::tuple<std::vector<Segment>, int64_t> trajectory_generation(Vec3 start, Vec3 end, DroneStatus drone, bool without_taking_off);
+    std::tuple<std::vector<Segment>, int64_t> trajectory_generation(Vec3 start, Vec3 end, DroneStatus drone, 
+                                                        bool without_taking_off);
     // 打印segment的信息
-    std::string segments_to_string(std::vector<Segment> segs);
-
-    float map_min_x, map_max_x, map_min_y, map_max_y, map_min_z, map_max_z;
-    std::vector<std::string> unused_drone_id;
-    std::unordered_map<std::string, MyDroneInfo> my_drone_info; 
-    std::vector<Vec3> generate_waypoints_by_a_star(Vec3 start, Vec3 end, DroneStatus drone);
+    std::string segments_to_string(std::vector<Segment> segs);  
 };
 
 // TODO: 依据自己的设计添加所需的类，下面举例说明一些常用功能类
