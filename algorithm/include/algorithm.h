@@ -22,14 +22,14 @@ using cargoes_info = std::map<int, mtuav::CargoInfo>;
 // 用于表示我想飞的无人机的信息
 struct MyDroneInfo {
     bool cargo_info_unchanged;
-    bool wait_to_fly;
+    bool wait_to_work;
     int drone_status;
     double drone_battery;
     double flying_height;
     
     Vec3 drone_position;
-    Vec3 target_break_position;  // 我看都离充电站挺近的，可以用于处理充电站纠纷的问题
-    Vec3 target_charging_position;
+    Vec3 target_breaking_station;  // 我看都离充电站挺近的，可以用于处理充电站纠纷的问题
+    Vec3 target_charging_station;
     Vec3 flightplan_takeoff_position;
     Vec3 flightplan_land_position;
 
@@ -38,21 +38,21 @@ struct MyDroneInfo {
     std::vector<int> black_cargo_list;
     std::vector<std::vector<int>> static_grid;
     std::vector<std::vector<int>> dynamic_grid; // 用于避障
-    std::vector<Vec3> median_flying_waypoints;
+    std::vector<Vec3> all_flying_waypoints;
 
     // 构造函数，可以考虑预置黑名单
     // black_cargo_list({41,337,79,187})
     MyDroneInfo(): flying_height(120), drone_battery(100), unfinished_cargo_ids({-1, -1, -1}),  drone_status(0),
-        current_cargo_ids({-1,-1,-1}), cargo_info_unchanged(true), wait_to_fly(false),
+        current_cargo_ids({-1,-1,-1}), cargo_info_unchanged(true), wait_to_work(false),
         flightplan_takeoff_position({-1,-1,-1}), flightplan_land_position({-1,-1,-1})
        {
-        target_charging_position.x =-1;
-        target_charging_position.y =-1;
-        target_charging_position.z =-1;
+        target_charging_station.x =-1;
+        target_charging_station.y =-1;
+        target_charging_station.z =-1;
 
-        target_break_position.x = -1;
-        target_break_position.y = -1;
-        target_break_position.z = -1;
+        target_breaking_station.x = -1;
+        target_breaking_station.y = -1;
+        target_breaking_station.z = -1;
     }
 };
 
@@ -116,25 +116,6 @@ class myAlgorithm : public Algorithm {
 };
 
 // TODO: 依据自己的设计添加所需的类，下面举例说明一些常用功能类
-
-// 用于估计当前时刻配送某订单的预期收益
-class CargoValueCalculator {
-   public:
-    int64_t cargo_value(int64_t cargo_id) { return 100; }
-};
-
-// 用于计算当前时刻使用某无人机预期带来的收益
-class DroneValueCalculator {
-   public:
-    int64_t drone_value(int64_t drone_id) { return 10; }
-};
-
-// 记录算法求解中间状态
-class AlgorihtmStatesRecorder {
-   public:
-    std::vector<int64_t> _drones_to_scheduler;  // 记录用于
-    std::vector<int64_t> _cargos_to_delivery;
-};
 
 
 }  // namespace mtuav::algorithm

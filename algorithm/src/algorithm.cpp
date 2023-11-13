@@ -168,7 +168,7 @@ void myAlgorithm::initialize_static_grid() {
                     int ix = (x - map_min_x) / step;
                     int iy = (y - map_min_y) / step;
                     // Use the distance value to set the grid cell value
-                    if (voxel->distance <= 4) {
+                    if (voxel->distance <= 5) {
                         grid[iy][ix] = 1;
                     } else {
                         grid[iy][ix] = 0;
@@ -181,75 +181,159 @@ void myAlgorithm::initialize_static_grid() {
     }
 }
 
-// TODO：如何加快这里路过点的判断呢
 void myAlgorithm::add_takeoff_grid(std::string this_drone_id, double safer_distance, double current_height){
     MyDroneInfo mydrone = my_drone_info[this_drone_id];
     auto takeoff_position = mydrone.flightplan_takeoff_position;
+    int step = 1; // assuming each cell represents a 1m x 1m area
 
-    for (auto& pair : my_drone_info) {
-        if (pair.first == this_drone_id) continue;
-        if (pair.second.flying_height + safer_distance <= current_height) continue;
-        int step = 1; // assuming each cell represents a 1m x 1m area
-        float z = pair.second.flying_height; // height at which the 2D map is generated
+    for (float x = takeoff_position.x - safer_distance; x <= takeoff_position.x + safer_distance; x += step) {
+        for (float y = takeoff_position.y - safer_distance; y <= takeoff_position.y + safer_distance; y += step) {
+            // 转换为动态网格索引
+            int ix = (int)((x - map_min_x) / step);
+            int iy = (int)((y - map_min_y) / step);
 
-        for (float x = map_min_x; x <= map_max_x; x += step) {
-            for (float y = map_min_y; y <= map_max_y; y += step) {
-                int ix = (x - map_min_x) / step;
-                int iy = (y - map_min_y) / step;
-                Vec3 target = {x,y,z};
-                if ((distance_2D(takeoff_position, target) < safer_distance)){
-                    pair.second.dynamic_grid[iy][ix] = 1;
+            // 确保索引在动态网格的有效范围内
+            if (ix >= map_min_x && ix <= map_max_x && iy >= map_min_y && iy <= map_max_y) {
+                for (auto& pair : my_drone_info) {
+                    if (pair.first == this_drone_id) continue;
+                    if (pair.second.flying_height + safer_distance <= current_height) continue;
+                    float z = pair.second.flying_height; // height at which the 2D map is generated
+                    // 计算当前点到起飞点的二维距离
+                    Vec3 target = {x,y,z};
+                    if ((distance_2D(takeoff_position, target) <= safer_distance)){
+                        pair.second.dynamic_grid[iy][ix] = 1;
+                    }
                 }
+                
             }
         }
     }
 }
 
-// TODO：如何加快这里路过点的判断呢
-void myAlgorithm::add_flying_grid(std::string this_drone_id, double safer_distance, double current_height){
-    MyDroneInfo mydrone = my_drone_info[this_drone_id];
-    auto current_position = mydrone.drone_position;
-    auto takeoff_position = mydrone.flightplan_takeoff_position;
-    auto median_flying_waypoints = mydrone.median_flying_waypoints;
-    auto land_position = mydrone.flightplan_land_position;
-
-    for (auto& pair : my_drone_info) {
-        if (pair.first == this_drone_id) continue;
-        if (std::fabs(current_height - pair.second.flying_height) > epsilon) continue;
-        int step = 1; // assuming each cell represents a 1m x 1m area
-        float z = pair.second.flying_height; // height at which the 2D map is generated
-
-        for (float x = map_min_x; x <= map_max_x; x += step) {
-            for (float y = map_min_y; y <= map_max_y; y += step) {
-                int ix = (x - map_min_x) / step;
-                int iy = (y - map_min_y) / step;
-                Vec3 target = {x,y,z};
-                if ((distance_2D(land_position, target) < safer_distance)){
-                    pair.second.dynamic_grid[iy][ix] = 1;
-                }
-            }
-        }
-    }
-}
-
-// TODO：如何加快这里路过点的判断呢
 void myAlgorithm::add_landing_grid(std::string this_drone_id, double safer_distance, double current_height){
     MyDroneInfo mydrone = my_drone_info[this_drone_id];
     auto land_position = mydrone.flightplan_land_position;
+    int step = 1; // assuming each cell represents a 1m x 1m area
 
-    for (auto& pair : my_drone_info) {
-        if (pair.first == this_drone_id) continue;
-        if (current_height + safer_distance <= pair.second.flying_height) continue;
-        int step = 1; // assuming each cell represents a 1m x 1m area
-        float z = pair.second.flying_height; // height at which the 2D map is generated
+    for (float x = land_position.x - safer_distance; x <= land_position.x + safer_distance; x += step) {
+        for (float y = land_position.y - safer_distance; y <= land_position.y + safer_distance; y += step) {
+            // 转换为动态网格索引
+            int ix = (int)((x - map_min_x) / step);
+            int iy = (int)((y - map_min_y) / step);
 
-        for (float x = map_min_x; x <= map_max_x; x += step) {
-            for (float y = map_min_y; y <= map_max_y; y += step) {
-                int ix = (x - map_min_x) / step;
-                int iy = (y - map_min_y) / step;
-                Vec3 target = {x,y,z};
-                if ((distance_2D(land_position, target) < safer_distance)){
-                    pair.second.dynamic_grid[iy][ix] = 1;
+            // 确保索引在动态网格的有效范围内
+            if (ix >= map_min_x && ix <= map_max_x && iy >= map_min_y && iy <= map_max_y) {
+                for (auto& pair : my_drone_info) {
+                    if (pair.first == this_drone_id) continue;
+                    if (current_height + safer_distance <= pair.second.flying_height) continue;
+                    float z = pair.second.flying_height; // height at which the 2D map is generated
+                    // 计算当前点到起飞点的二维距离
+                    Vec3 target = {x,y,z};
+                    if ((distance_2D(land_position, target) <= safer_distance)){
+                        pair.second.dynamic_grid[iy][ix] = 1;
+                    }
+                }
+                
+            }
+        }
+    }
+}
+
+// 1. Find the current segment the drone is on or closest to.
+// Helper function to find the closest point on a line segment.
+Vec3 get_closest_point_on_line_segment(const Vec3& p, const Vec3& start, const Vec3& end) {
+    Vec3 line_vec = {end.x - start.x, end.y - start.y, end.z - start.z};
+    Vec3 p_vec = {p.x - start.x, p.y - start.y, p.z - start.z};
+    double dot = p_vec.x * line_vec.x + p_vec.y * line_vec.y + p_vec.z * line_vec.z;
+    double length_sq = line_vec.x * line_vec.x + line_vec.y * line_vec.y + line_vec.z * line_vec.z;
+    double param = dot / length_sq;
+
+    if (param < 0 || (start.x == end.x && start.y == end.y)) {
+        return start;
+    } else if (param > 1) {
+        return end;
+    } else {
+        return {start.x + param * line_vec.x, start.y + param * line_vec.y, start.z + param * line_vec.z};
+    }
+}
+
+size_t find_current_segment(const Vec3& current_position, const std::vector<Vec3>& waypoints) {
+    size_t closest_segment = 0;
+    double min_dist = std::numeric_limits<double>::max();
+
+    for (size_t i = 0; i < waypoints.size() - 1; ++i) {
+        Vec3 start = waypoints[i];
+        Vec3 end = waypoints[i + 1];
+        Vec3 closest_point = get_closest_point_on_line_segment(current_position, start, end);
+        double dist = distance_2D(current_position, closest_point);
+
+        if (dist < min_dist) {
+            min_dist = dist;
+            closest_segment = i;
+        }
+    }
+
+    return closest_segment;
+}
+
+// 2. Get all grid points on the path between two waypoints.
+std::vector<Vec3> get_grid_points_on_path(const Vec3& start, const Vec3& end) {
+    std::vector<Vec3> grid_points;
+
+    // Simple Bresenham algorithm for 2D.
+    int dx = abs(end.x - start.x), sx = start.x < end.x ? 1 : -1;
+    int dy = -abs(end.y - start.y), sy = start.y < end.y ? 1 : -1;
+    int err = dx + dy, e2;
+
+    int x = start.x, y = start.y;
+    while (true) {
+        grid_points.push_back({static_cast<double>(x), static_cast<double>(y), start.z});
+        if (x == end.x && y == end.y) break;
+        e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x += sx; }
+        if (e2 <= dx) { err += dx; y += sy; }
+    }
+
+    return grid_points;
+}
+
+void myAlgorithm::add_flying_grid(std::string this_drone_id, double safer_distance, double current_height) {
+    MyDroneInfo mydrone = my_drone_info[this_drone_id];
+    auto current_position = mydrone.drone_position;
+    auto all_flying_waypoints = mydrone.all_flying_waypoints;
+    int step = 1;
+
+    // 找到无人机当前位置在航线上的最近点或段
+    size_t current_segment = find_current_segment(current_position, all_flying_waypoints);
+
+    // 从当前段开始，遍历所有航点
+    for (size_t i = current_segment; i < all_flying_waypoints.size() - 1; ++i) {
+        // 对于每个航点和下一个航点之间的线段
+        auto start_point = all_flying_waypoints[i];
+        auto end_point = all_flying_waypoints[i + 1];
+
+        // 获取该线段上的所有网格点
+        std::vector<Vec3> grid_points_on_path = get_grid_points_on_path(start_point, end_point);
+
+        // 遍历这些网格点，标记禁飞区
+        for (const Vec3& grid_point : grid_points_on_path) {
+            int grid_min_x = std::max(static_cast<int>(map_min_x), static_cast<int>((grid_point.x - safer_distance) / step));
+            int grid_max_x = std::min(static_cast<int>(map_max_x), static_cast<int>((grid_point.x + safer_distance) / step));
+            int grid_min_y = std::max(static_cast<int>(map_min_y), static_cast<int>((grid_point.y - safer_distance) / step));
+            int grid_max_y = std::min(static_cast<int>(map_max_y), static_cast<int>((grid_point.y + safer_distance) / step));
+
+            for (float ix = grid_min_x; ix <= grid_max_x; ix+=step) {
+                for (float iy = grid_min_y; iy <= grid_max_y; iy+=step) {
+                    for (auto& pair : my_drone_info) {
+                        if (pair.first == this_drone_id) continue;
+                        if (pair.second.flying_height + safer_distance <= current_height) continue;
+                        float z = pair.second.flying_height; // height at which the 2D map is generated
+                        // 计算当前点到起飞点的二维距离
+                        Vec3 target = {ix * step, iy * step, grid_point.z};
+                        if (distance_2D(grid_point, target) <= safer_distance){
+                            pair.second.dynamic_grid[iy][ix] = 1;
+                        }
+                    }
                 }
             }
         }
@@ -262,7 +346,6 @@ void myAlgorithm::update_dynamic_grid(double safe_distance, double factor) {
     for (auto pair : my_drone_info) {
         auto current_position = pair.second.drone_position;
         auto takeoff_position = pair.second.flightplan_takeoff_position;
-        auto median_flying_waypoints = pair.second.median_flying_waypoints;
         auto land_position = pair.second.flightplan_land_position;
         if (takeoff_position.x < 0) continue;
 
@@ -658,7 +741,7 @@ int64_t myAlgorithm::solve() {
     // 根据算法计算情况，得出下一轮的算法调用间隔，单位ms
     // 依据需求计算所需的sleep time
     int64_t sleep_time_ms = 500;
-    int64_t takeoff_pending_time_ms = 5000;
+    int64_t takeoff_pending_time_ms = 10000;
     double dangerous_battery = 50;
     double safe_distance = 10;
     double safety_factor = 1.2;
@@ -747,7 +830,7 @@ int64_t myAlgorithm::solve() {
                 }
             }
             LOG(INFO) << "delivered cargo id: " << cargo.id << ", final status: " << int(cargo.status) 
-                      << "bonus interval: " << cargo.expected_seconds_left << ", ddl interval: " << cargo.latest_seconds_left;
+                      << ", bonus interval: " << cargo.expected_seconds_left << ", ddl interval: " << cargo.latest_seconds_left;
         }
         // TODO: 依据订单信息定制化特殊操作
         // 太危险的订单是不是可以不接
@@ -766,6 +849,9 @@ int64_t myAlgorithm::solve() {
                       << ", drone status: " << int(drone.status)
                       << ", drone position: "<< drone.position.x << " " << drone.position.y << " " << drone.position.z
                       << ", drone battery: " << drone.battery;
+            if (drone.status == Status::CRASH){
+                LOG(INFO) << "drone crash reason: " << drone.crash_type;
+            }
             
             my_drone_info[drone.drone_id].drone_position = drone.position;
 
@@ -783,9 +869,13 @@ int64_t myAlgorithm::solve() {
             for (auto c : my_drone_info[drone.drone_id].current_cargo_ids) LOG(INFO) << "delivering-c-id: " << c;
             for (auto c: my_drone_info[drone.drone_id].unfinished_cargo_ids) LOG(INFO) << "unfinished-c-id: " << c;
             LOG(INFO) << drone.drone_id << "\'s target charging station:" 
-                                        << " " << my_drone_info[drone.drone_id].target_charging_position.x
-                                        << " " << my_drone_info[drone.drone_id].target_charging_position.y 
-                                        << " " << my_drone_info[drone.drone_id].target_charging_position.z; 
+                                        << " " << my_drone_info[drone.drone_id].target_charging_station.x
+                                        << " " << my_drone_info[drone.drone_id].target_charging_station.y 
+                                        << " " << my_drone_info[drone.drone_id].target_charging_station.z;
+            LOG(INFO) << drone.drone_id << "\'s target breaking station:" 
+                                        << " " << my_drone_info[drone.drone_id].target_breaking_station.x
+                                        << " " << my_drone_info[drone.drone_id].target_breaking_station.y 
+                                        << " " << my_drone_info[drone.drone_id].target_breaking_station.z;  
 
             // 初始化临时动态障碍物，默认有静态障碍信息
             my_drone_info[drone.drone_id].dynamic_grid = my_drone_info[drone.drone_id].static_grid;    
@@ -795,72 +885,85 @@ int64_t myAlgorithm::solve() {
     // 更新临时动态障碍物，添加动态障碍信息（包括其它飞机航线产生的临时体素、可能的动态障碍物）
     update_dynamic_grid(safe_distance, safety_factor);
     
+    // 每次只生成一条飞行计划
+    bool has_plan_a_drone = false;
     
     for (auto& drone : this->_drone_info) {
+        if (has_plan_a_drone) continue;
         if(my_drone_info.find(drone.drone_id) == my_drone_info.end()){
             continue;
         }
         MyDroneInfo& mydrone = my_drone_info[drone.drone_id];
-
-        // 不安全信息判断1：其它飞机正在使用加油站
-        // bool unsafe_flag = false;
-        // for (const auto& pair: my_drone_info){
-        //     if ((pair.first == drone.drone_id) || (pair.second.drone_status == Status::CRASH)) continue;
-
-        //     if ((distance_2D(mydrone.drone_position, pair.second.drone_position)<200)
-        //         && (pair.second.drone_position == mydrone.target_charging_position) 
-        //         && (pair.second.drone_status == Status::READY 
-        //         || pair.second.drone_status == Status::TAKING_OFF 
-        //         || pair.second.drone_status == Status::LANDING)
-        //             ){
-        //             LOG(INFO) << "Nearest Charging Station of "<< drone.drone_id 
-        //                         << "is occupied by" << pair.first;
-        //             unsafe_flag = true;
-        //             break;
-        //         }
-        // }
         
+        //////////////////////////////////////////////////////////////////////////////////////
         // 无人机状态1:READY
-        if ((mydrone.drone_battery < dangerous_battery) && (mydrone.target_charging_position.x == -1)){
+        bool has_cargo = false;
+        for (auto cargo_id: mydrone.current_cargo_ids){
+            if (cargo_id!=-1){
+                has_cargo = true;
+                break;
+            }
+        }
+        // 尽量保证不要带着包裹去充电站
+        bool need_charge = false;
+        if ((!has_cargo) && (mydrone.drone_battery < dangerous_battery*1.5)){
+            need_charge = true;
+        }
+        if ((has_cargo) && (mydrone.drone_battery < dangerous_battery)){
+            need_charge = false;
+        }
+        if ((need_charge) && (mydrone.target_charging_station.x == -1)){
             auto available_battery_stations = this->_task_info->battery_stations;
             std::sort(available_battery_stations.begin(), available_battery_stations.end(), [drone](Vec3 p1, Vec3 p2) {
-                Vec3 the_drone_pos = drone.position;
-                double p1_to_drone = std::sqrt(std::pow(p1.x - the_drone_pos.x, 2) +
-                                            std::pow(p1.y - the_drone_pos.y, 2) +
-                                            std::pow(p1.z - the_drone_pos.z, 2));
-                double p2_to_drone = std::sqrt(std::pow(p2.x - the_drone_pos.x, 2) +
-                                            std::pow(p2.y - the_drone_pos.y, 2) +
-                                            std::pow(p2.z - the_drone_pos.z, 2));
+                double p1_to_drone = distance_3D(drone.position, p1);
+                double p2_to_drone = distance_3D(drone.position, p2);
                 return p1_to_drone < p2_to_drone;
             });
             int chosen_station_index = 0;
-            auto chosen_position = available_battery_stations.at(chosen_station_index);
+            auto chosen_charging_station = available_battery_stations.at(chosen_station_index);
             
-            bool occupy_flag = false;
-            for (const auto& pair: my_drone_info){
-                if (pair.first == drone.drone_id) continue;
-                if (pair.second.target_charging_position == chosen_position){
-                    occupy_flag = true;
-                    break;
-                }
+            // 考虑是否可达（包括占用）
+            if (mydrone.dynamic_grid[chosen_charging_station.y][chosen_charging_station.x]){
+                auto available_breaking_stations = this->_task_info->landing_positions;
+                std::sort(available_breaking_stations.begin(), available_breaking_stations.end(), [chosen_charging_station, mydrone](Vec3 p1, Vec3 p2) {
+                    double drone_to_p1_to_station = distance_3D(mydrone.drone_position, p1) + distance_3D(p1,chosen_charging_station);
+                    double drone_to_p2_to_station = distance_3D(mydrone.drone_position, p2) + distance_3D(p2,chosen_charging_station);
+                    
+                    // 计算是否能够到达相应临时停靠站
+                    bool can_not_reach_p1 = mydrone.dynamic_grid[p1.y][p1.x];
+                    bool can_not_reach_p2 = mydrone.dynamic_grid[p2.y][p2.x];
+                    if (!can_not_reach_p1 && can_not_reach_p2) return true;
+                    if (can_not_reach_p1 && !can_not_reach_p2) return false;
+                    return drone_to_p1_to_station < drone_to_p2_to_station;
+                });
+                mydrone.target_breaking_station = available_breaking_stations.at(chosen_station_index);    
+            } else {
+                mydrone.target_charging_station = chosen_charging_station;
             }
-
-            if (!occupy_flag){
-                mydrone.target_charging_position = chosen_position;
-            } // TODO： breaking_station的出场机会还要好好思考
         }
 
-        if ((mydrone.drone_status == Status::READY) && ((mydrone.target_charging_position.x != -1))
-          && (mydrone.drone_position!=mydrone.target_charging_position)){
+        if ((mydrone.drone_status == Status::READY) && ((mydrone.target_charging_station.x != -1))
+          && (mydrone.drone_position!=mydrone.target_charging_station)){
+            mydrone.target_breaking_station.x = -1;
+            mydrone.target_breaking_station.y = -1;
+            mydrone.target_breaking_station.z = -1;
             drones_need_recharge.push_back(drone);
+            has_plan_a_drone = true;
             continue;
         }
 
-        if ((mydrone.drone_battery > 95) && (mydrone.target_charging_position.x != -1)){
-            mydrone.target_charging_position.x = -1;
-            mydrone.target_charging_position.y = -1;
-            mydrone.target_charging_position.z = -1;
-            mydrone.wait_to_fly = true;
+        if ((mydrone.drone_status == Status::READY) && ((mydrone.target_breaking_station.x != -1))
+          && (mydrone.drone_position!=mydrone.target_breaking_station)){
+            drones_need_break.push_back(drone);
+            has_plan_a_drone = true;
+            continue;
+        }
+
+        if ((!need_charge) && (mydrone.target_charging_station.x != -1)){
+            mydrone.target_charging_station.x = -1;
+            mydrone.target_charging_station.y = -1;
+            mydrone.target_charging_station.z = -1;
+            mydrone.wait_to_work = true;
         }
 
         if (mydrone.drone_status == Status::READY) {
@@ -901,8 +1004,9 @@ int64_t myAlgorithm::solve() {
                         unfinished_order.push_back(-1); 
                     }
                     mydrone.unfinished_cargo_ids = unfinished_order;
-                    mydrone.wait_to_fly = true;
+                    mydrone.wait_to_work = true;
                     drones_to_pick.push_back(drone);
+                    has_plan_a_drone = true;
                 } else {
                     LOG(INFO) << drone.drone_id << " - can not find any proper cargos....";
                 }
@@ -933,30 +1037,33 @@ int64_t myAlgorithm::solve() {
                 if ((tmp_delivering_cargo_ids[0] != tmp_unfinished_cargo_ids[0] ||
                 tmp_delivering_cargo_ids[1] != tmp_unfinished_cargo_ids[1] ||
                 tmp_delivering_cargo_ids[2] != tmp_unfinished_cargo_ids[2])){
-                    if ((mydrone.cargo_info_unchanged) && (!mydrone.wait_to_fly)) {
+                    if ((mydrone.cargo_info_unchanged) && (!mydrone.wait_to_work)) {
                         LOG(INFO) << drone.drone_id << " - wait for sync and then deliver....";
                     } else{
-                        drones_to_pick.push_back(drone); // 没有取到所有货物，先取货物 
+                        drones_to_pick.push_back(drone); // 没有取到所有货物，先取货物
+                        has_plan_a_drone = true;
                     }
                 }
                 else{
                     if ((mydrone.cargo_info_unchanged) && (tmp_delivering_cargo_ids[0]==-1)) {
                         LOG(INFO) << drone.drone_id << " - wait for sync and then pick....";
                     } else{
-                        drones_to_delivery.push_back(drone); // 应该已经取到所有货物了，开始配送 
+                        drones_to_delivery.push_back(drone); // 应该已经取到所有货物了，开始配送
+                        has_plan_a_drone = true; 
                     }
                 } 
             }
             continue;
         }
 
+        //////////////////////////////////////////////////////////////////////////////////////
         // 无人机状态2:平飞
         if (mydrone.drone_status == Status::FLYING) {
-            mydrone.wait_to_fly = false;
+            mydrone.wait_to_work = false;
             continue;
         }
 
-        // 无人机状态3:悬停
+        // 无人机状态3:悬停（应对动态障碍物）
         // if ((mydrone.drone_status == Status::HOVERING) && (!unsafe_flag) 
         //       && (mydrone.target_charging_position.x !=-1)
         //       && (mydrone.target_charging_position.y !=-1)
@@ -1005,10 +1112,7 @@ int64_t myAlgorithm::solve() {
     // 无人机与订单进行匹配，并生成飞行轨迹
     //////////////////////////////////////////////////////////////////////////////////////////////////
     // 策略1：为没有订单的无人机生成取订单航线
-    bool session_break= false; // 每次只生成一条飞行计划
     for (auto the_drone : drones_to_pick) {
-        if (session_break) break;
-
         MyDroneInfo& mydrone = my_drone_info[the_drone.drone_id];
         
         CargoInfo the_cargo;
@@ -1079,15 +1183,12 @@ int64_t myAlgorithm::solve() {
                       << ", now cargo id: " << the_cargo.id; 
             for(auto& item : mydrone.unfinished_cargo_ids) item = -1;
         }
-        session_break = true;
         break; // 每次只生成一条取货飞行计划
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
     // 策略2：为已经取货的飞机生成送货飞行计划
     for (auto the_drone : drones_to_delivery) {
-        if (session_break) break;
-
         MyDroneInfo& mydrone = my_drone_info[the_drone.drone_id];
 
         int the_cargo_id = 0;
@@ -1158,19 +1259,16 @@ int64_t myAlgorithm::solve() {
                           << ", cargo id: " << the_cargo.id;
             }
         }
-        session_break = true;
         break;  // 每次只生成一条送货飞行计划
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
     // 策略3：为电量小于指定数值的无人机生成换电航线
     for (auto the_drone : drones_need_recharge) {
-        if (session_break) break;
-
         MyDroneInfo& mydrone = my_drone_info[the_drone.drone_id];
         
         Vec3 the_selected_station;
-        the_selected_station = mydrone.target_charging_position;
+        the_selected_station = mydrone.target_charging_station;
         auto landing_position = the_selected_station;
         // landing_position.z = roundUpToMultipleOf4(the_selected_station.z);
 
@@ -1200,92 +1298,50 @@ int64_t myAlgorithm::solve() {
                 << ", flight purpose: " << int(recharge.flight_purpose)
                 << ", flight type: " << int(recharge.flight_plan_type) << ", cargo id: none";
 
-        session_break = true;
         break;  // 每次只生成一条换电飞行计划
     }
 
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
-    // 策略4：将一直飞不起来的飞机放在临时停靠站（TODO：暂时没有用到）
-    // for (auto the_drone : drones_need_break) {
-    //     auto all_break_positions = this->_task_info->landing_positions;
-    //     std::vector<Vec3> available_break_positions;
-    //     for (const auto& station : all_break_positions) {
-    //         bool occupy_flag = false;
-    //         for (const auto& pair : my_drone_info) {
-    //             auto target = pair.second.target_break_position;
-    //             if (target == station) {
-    //                 LOG(INFO) << "Break Station occupied";
-    //                 occupy_flag = true;
-    //                 break;
-    //             }
-    //         }
-    //         if (!occupy_flag){
-    //             available_break_positions.push_back(station);
-    //         }
-    //     }
+    // 策略4：将需要充电、但暂时充电站被占用的飞机，放在临时停靠站排队，用来排队换电
+    for (auto the_drone : drones_need_break) {
+        MyDroneInfo& mydrone = my_drone_info[the_drone.drone_id];
         
-    //     // 没有换电站，无法执行换电操作
-    //     if (available_break_positions.size() == 0) {
-    //         LOG(INFO) << "there is no break station. ";
-    //         break;
-    //     }
-    //     // 依据距离当前无人机的具体排序
-    //     std::sort(available_break_positions.begin(), available_break_positions.end(), [the_drone](Vec3 p1, Vec3 p2) {
-    //         Vec3 the_drone_pos = the_drone.position;
-    //         double p1_to_drone = std::sqrt(std::pow(p1.x - the_drone_pos.x, 2) +
-    //                                        std::pow(p1.y - the_drone_pos.y, 2) +
-    //                                        std::pow(p1.z - the_drone_pos.z, 2));
-    //         double p2_to_drone = std::sqrt(std::pow(p2.x - the_drone_pos.x, 2) +
-    //                                        std::pow(p2.y - the_drone_pos.y, 2) +
-    //                                        std::pow(p2.z - the_drone_pos.z, 2));
-    //         return p1_to_drone < p2_to_drone;
-    //     });
-    //     // 选择距离当前无人机最近的换电站
-    //     int the_station_idx = 0;
-    //     // 依次选择换电站
-    //     Vec3 the_selected_station;
-    //     if (the_station_idx < available_break_positions.size()) {
-    //         the_selected_station = available_break_positions.at(the_station_idx);
-    //         my_drone_info[the_drone.drone_id].target_break_position = the_selected_station;
-    //     } else {
-    //         continue;   // 没有可用的话，就保持ready继续等待有充电站可以用吧，理论上是1000ms充满，检验状态机判定是否准确
-    //     }
+        Vec3 the_selected_station;
+        the_selected_station = mydrone.target_breaking_station;
+        auto landing_position = the_selected_station;
+        // landing_position.z = roundUpToMultipleOf4(the_selected_station.z);
 
-    //     auto landing_position = the_selected_station;
-    //     landing_position.z = roundUpToMultipleOf4(the_selected_station.z);
+        LOG(INFO) << the_drone.drone_id << " go to breaking station, position: " << the_selected_station.x
+                  << " " << the_selected_station.y << " " << the_selected_station.z
+                  << ", current uav position:" << the_drone.position.x << " " << the_drone.position.y << " " << the_drone.position.z
+                  << ", current landing position:" << landing_position.x << " " << landing_position.y << " " << landing_position.z;  
 
-    //     LOG(INFO) << "go to break station, position: " << the_selected_station.x
-    //               << " " << the_selected_station.y << " " << the_selected_station.z
-    //               << ", current uav position:" << the_drone.position.x << " " << the_drone.position.y << " " << the_drone.position.z
-    //               << ", current landing position:" << landing_position.x << " " << landing_position.y << " " << landing_position.z;  
+        FlightPlan breaking;
+        // TODO 参赛选手需要自己实现一个轨迹生成函数或中转点生成函数
+        auto [breaking_traj, breaking_flight_time] = this->trajectory_generation(
+            the_drone.position, landing_position, the_drone, false);  //此处使用轨迹生成函数
+        breaking.flight_purpose = FlightPurpose::FLIGHT_COMMON;
+        breaking.flight_plan_type = FlightPlanType::PLAN_TRAJECTORIES;
+        breaking.flight_id = std::to_string(++Algorithm::flightplan_num);
+        breaking.takeoff_timestamp = current_time + takeoff_pending_time_ms;
+        breaking.segments = breaking_traj;
 
-    //     FlightPlan take_break;
-    //     // TODO 参赛选手需要自己实现一个轨迹生成函数或中转点生成函数
-    //     auto [take_break_traj, take_break_flight_time] = this->trajectory_generation(
-    //         the_drone.position, landing_position, the_drone, false);  //此处使用轨迹生成函数
-    //     take_break.flight_purpose = FlightPurpose::FLIGHT_COMMON;
-    //     take_break.flight_plan_type = FlightPlanType::PLAN_TRAJECTORIES;
-    //     take_break.flight_id = std::to_string(++Algorithm::flightplan_num);
-    //     take_break.takeoff_timestamp = current_time + 3000;  // 立刻起飞
-    //     take_break.segments = take_break_traj;
-    //     // 在下发飞行计划前，选手可以使用该函数自行先校验飞行计划的可行性
-    //     auto reponse_take_break = this->_planner->ValidateFlightPlan(dl, take_break);
-    //     LOG(INFO) << "ValidateFlightPlan, sussess: " << reponse_take_break.success<<", err msg: " << reponse_take_break.msg;
-    //     // 注意ValidateFlightPlan 只能校验起点/终点均在地面上的飞行计划
-    //     flight_plans_to_publish.push_back({the_drone.drone_id, take_break});
-    //     if (!take_break_traj.empty()) {
-    //         LOG(INFO) << "first point z: " << take_break_traj.front().position.z;
-    //     } else {
-    //         LOG(WARNING) << "take_break_traj is empty!";
-    //     }
-    //     LOG(INFO) << "Successfully generated flight plan, flight id: " << take_break.flight_id
-    //               << ", drone id: " << the_drone.drone_id
-    //               << ", flight purpose: " << int(take_break.flight_purpose)
-    //               << ", flight type: " << int(take_break.flight_plan_type) << ", cargo id: none";
-    // }
+        flight_plans_to_publish.push_back({the_drone.drone_id, breaking});
+        if (!breaking_traj.empty()) {
+            LOG(INFO) << "first point z: " << breaking_traj.front().position.z;
+        } else {
+            LOG(WARNING) << "breaking_traj is empty!";
+        }
+        LOG(INFO) << "Successfully generated flight plan, flight id: " << breaking.flight_id
+                << ", drone id: " << the_drone.drone_id
+                << ", flight purpose: " << int(breaking.flight_purpose)
+                << ", flight type: " << int(breaking.flight_plan_type) << ", cargo id: none";
 
+        break;  // 每次只生成一条临时停靠计划
+    }
 
+    //////////////////////////////////////////////////////////////////////////////////////////////////
     // 下发所求出的飞行计划
     for (auto& [drone_id, flightplan] : flight_plans_to_publish) {
         auto publish_result = this->_planner->DronePlanFlight(drone_id, flightplan);
@@ -1293,8 +1349,7 @@ int64_t myAlgorithm::solve() {
                   << ", successfully?: " << std::boolalpha << publish_result.success
                   << ", msg: " << publish_result.msg;
     }
-
-    // TODO 找出需要悬停的无人机（目前服务于避障来用）
+    // TODO 找出需要悬停的无人机（目前服务于未来可能的动态避障来用）
     for (auto& drone : drones_to_hover) {
         this->_planner->DroneHover(drone.drone_id);
         LOG(INFO) << "Send drone hover command, drone id: " << drone.drone_id;
@@ -1385,7 +1440,7 @@ std::tuple<std::vector<Segment>, int64_t> myAlgorithm::trajectory_generation(Vec
     // TODO: 此处将起飞点、中间点（可能为空）、降落点加入状态机用于绘制dynamic_grid
     mydrone.flightplan_takeoff_position = start;
     mydrone.flightplan_land_position = end;
-    mydrone.median_flying_waypoints = flying_waypoints;
+    mydrone.all_flying_waypoints = all_waypoints;
 
     
     // 生成p3->p4段轨迹点
