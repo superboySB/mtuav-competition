@@ -36,8 +36,6 @@ struct MyDroneInfo {
     std::vector<int> current_cargo_ids;
     std::vector<int> unfinished_cargo_ids;
     std::vector<int> black_cargo_list;
-    std::vector<std::vector<int>> static_grid;
-    std::vector<std::vector<int>> dynamic_grid; // 用于避障
     std::vector<Vec3> all_flying_waypoints;
 
     // 构造函数，可以考虑预置黑名单
@@ -56,6 +54,11 @@ struct MyDroneInfo {
     }
 };
 
+struct MyAirspaceGrid {
+    std::vector<std::vector<int>> static_grid;
+    std::vector<std::vector<int>> dynamic_grid; // 用于避障
+};
+    
 
 using namespace ::mtuav;
 namespace mtuav::algorithm {
@@ -99,17 +102,20 @@ class myAlgorithm : public Algorithm {
 
     // * 需要选手自行添加所需的函数
     float map_min_x, map_max_x, map_min_y, map_max_y, map_min_z, map_max_z;
+    std::vector<Vec3> battery_station_positions;
     std::unordered_map<std::string, MyDroneInfo> my_drone_info; 
+    std::unordered_map<double, MyAirspaceGrid> my_airspace_grid; 
     void initialize_static_grid();
-    void add_takeoff_grid(std::string this_drone_id, double safer_distance, double current_height);
-    void add_flying_grid(std::string this_drone_id, double safer_distance, double current_height);
-    void add_landing_grid(std::string this_drone_id, double safer_distance, double current_height);
-    void update_dynamic_grid(double safe_distance, double factor);
+    void add_cargo_target_grid(Vec3 cargo_target_position, MyAirspaceGrid& myairspace, double safer_distance);
+    void add_takeoff_grid(MyDroneInfo otherdrone, MyAirspaceGrid& myairspace, double safer_distance);
+    void add_flying_grid(MyDroneInfo otherdrone, MyAirspaceGrid& myairspace, double safer_distance);
+    void add_landing_grid(MyDroneInfo otherdrone, MyAirspaceGrid& myairspace, double safer_distance);
+    void update_dynamic_grid(std::string this_drone_id, MyAirspaceGrid& myairspace, double safe_distance, double factor);
 
     // 示例：给定起点、终点，返回无人机WayPoint飞行轨迹与飞行时间
     // std::tuple<std::vector<Segment>, int64_t> waypoints_generation(Vec3 start, Vec3 end);
     // 示例：给定起点、终点与无人机，返回无人机trajectory飞行轨迹与飞行时间
-    std::tuple<std::vector<Segment>, int64_t> trajectory_generation(Vec3 start, Vec3 end, DroneStatus drone, 
+    std::tuple<std::vector<Segment>, int64_t> trajectory_generation(Vec3 start, Vec3 end, std::vector<Vec3> flying_waypoints, DroneStatus drone,
                                                         bool without_taking_off);
     // 打印segment的信息
     std::string segments_to_string(std::vector<Segment> segs);  
