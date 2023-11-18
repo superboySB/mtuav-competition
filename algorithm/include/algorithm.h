@@ -105,7 +105,7 @@ class myAlgorithm : public Algorithm {
     std::vector<Vec3> battery_station_positions;
     std::unordered_map<std::string, MyDroneInfo> my_drone_info; 
     std::unordered_map<double, MyAirspaceGrid> my_airspace_grid; 
-    void initialize_static_grid();
+    void initialize_static_grid(std::vector<Vec3> raw_battery_station_positions);
     void add_cargo_target_grid(Vec3 cargo_target_position, MyAirspaceGrid& myairspace, double safer_distance);
     void add_takeoff_grid(MyDroneInfo otherdrone, MyAirspaceGrid& myairspace, double safer_distance);
     void add_flying_grid(MyDroneInfo otherdrone, MyAirspaceGrid& myairspace, double safer_distance);
