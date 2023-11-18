@@ -35,11 +35,10 @@ struct MyDroneInfo {
 
     std::vector<int> current_cargo_ids;
     std::vector<int> unfinished_cargo_ids;
-    std::vector<int> black_cargo_list;
+    std::vector<Vec3> black_position_list;
     std::vector<Vec3> all_flying_waypoints;
 
     // 构造函数，可以考虑预置黑名单
-    // black_cargo_list({41,337,79,187})
     MyDroneInfo(): flying_height(120), drone_battery(100), unfinished_cargo_ids({-1, -1, -1}),  drone_status(0),
         current_cargo_ids({-1,-1,-1}), cargo_info_unchanged(true), wait_to_work(false),
         flightplan_takeoff_position({-1,-1,-1}), flightplan_land_position({-1,-1,-1})

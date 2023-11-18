@@ -68,14 +68,9 @@ bool operator==(const Vec3& a, const Vec3& b) {
 }
 
 bool operator!=(const Vec3& a, const Vec3& b) {
-    return std::fabs(a.x - b.x) > epsilon || std::fabs(a.y - b.y) > epsilon || std::fabs(a.z - b.z) > epsilon;
+    return !(a == b); // 直接使用 == 操作符的否定
 }
 
-bool black_2d_position_check(const Vec3& position, const Vec3& target_position, const double bx, const double by) {
-    if (std::fabs(position.x - bx) < epsilon && std::fabs(position.y - by) < epsilon) return true;
-    if (std::fabs(target_position.x - bx) < epsilon && std::fabs(target_position.y - by) < epsilon) return true;
-    return false;
-}
 
 double roundUpToMultipleOf4(double num) {
     if (std::fmod(num, 4) < epsilon ){
@@ -207,6 +202,15 @@ void myAlgorithm::initialize_static_grid(std::vector<Vec3> raw_battery_station_p
                 }
             }
         }
+
+        // TODO: 初始轨迹奇奇怪怪的，把边界加个障碍物吧
+        grid[0][5]=1;
+        grid[0][6]=1;
+        grid[0][7]=1;
+        grid[1][5]=1;
+        grid[1][6]=1;
+        grid[1][7]=1;
+
         my_airspace_grid[z].static_grid = grid;
         my_airspace_grid[z].dynamic_grid = grid;
     }
@@ -386,6 +390,7 @@ void myAlgorithm::update_dynamic_grid(std::string this_drone_id, MyAirspaceGrid&
         auto other_takeoff_position = pair.second.flightplan_takeoff_position;
         auto other_land_position = pair.second.flightplan_land_position;
         auto other_flying_height = pair.second.flying_height;
+        auto other_status = pair.second.drone_status;
 
         // 若拿到外卖任务，还需要给送货地址周围加光柱
         auto tmp_unfinished_cargo_ids= pair.second.unfinished_cargo_ids;
@@ -398,15 +403,15 @@ void myAlgorithm::update_dynamic_grid(std::string this_drone_id, MyAirspaceGrid&
         }
 
         // 当前遇到不可达问题，导致飞不起来的时候（此时没有生成航线）
-        if ((other_takeoff_position.x >= 0) && (other_land_position.x < 0)){
+        if ((other_takeoff_position.x >= 0) && (other_status == Status::READY)){
             add_takeoff_grid(pair.second,myairspace,safe_distance*factor);  
-            continue;
         }
 
         // 当前位置处于起飞阶段
         // 但这个条件不能只用起飞的条件，不然其它飞机也会去拿相同外卖
         if ((std::fabs(other_current_position.x - other_takeoff_position.x) < epsilon) 
-          && (std::fabs(other_current_position.y - other_takeoff_position.y) < epsilon)){
+          && (std::fabs(other_current_position.y - other_takeoff_position.y) < epsilon)
+          && (other_land_position.x >=0)){
             add_takeoff_grid(pair.second,myairspace,safe_distance*factor);
             if (self_flying_height >= other_flying_height) add_flying_grid(pair.second,myairspace,safe_distance*factor);
             add_landing_grid(pair.second,myairspace,safe_distance*factor);
@@ -713,12 +718,23 @@ std::vector<CargoInfo> selectAndOrderCargoes(
     return selected_cargoes;
 }
 
+bool positionInBlackList(const Vec3& position, const std::vector<Vec3>& black_list) {
+    for (const auto& black_position : black_list) {
+        if (std::fabs(position.x - black_position.x) < epsilon &&
+            std::fabs(position.y - black_position.y) < epsilon &&
+            std::fabs(position.z - black_position.z) <= 4.01) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void removeConflictCargoes(std::vector<CargoInfo>& cargoes_to_delivery_and_no_accepted, 
                            const std::vector<int>& unfinished_order,
                            std::map<int, mtuav::CargoInfo> cargo_info,
                            double safety_distance,
                            double flying_height,
-                           const std::vector<int>& black_list,
+                           const std::vector<Vec3> black_list,
                            std::vector<Vec3> all_battery_stations,
                            const std::vector<std::vector<int>> dynamic_grid,
                            double factor) {
@@ -727,7 +743,7 @@ void removeConflictCargoes(std::vector<CargoInfo>& cargoes_to_delivery_and_no_ac
         std::remove_if(
             cargoes_to_delivery_and_no_accepted.begin(), 
             cargoes_to_delivery_and_no_accepted.end(),
-            [&unfinished_order, safety_distance,cargo_info, flying_height,black_list,factor,
+            [&unfinished_order, safety_distance,cargo_info, flying_height,&black_list,factor,
                     all_battery_stations, dynamic_grid](const CargoInfo& cargo) {
                 // 会有地点很高的外卖
                 if ((cargo.position.z >= flying_height) || (cargo.target_position.z >= flying_height))  {
@@ -735,8 +751,9 @@ void removeConflictCargoes(std::vector<CargoInfo>& cargoes_to_delivery_and_no_ac
                 }
                 
                 // 死活拿不到的外卖（之前是状态机维护问题，现在暂时认为不存在降落点误差）
-                auto it = std::find(black_list.begin(), black_list.end(), cargo.id);
-                if (it != black_list.end()) return true;             
+                // auto it = std::find(black_list.begin(), black_list.end(), cargo.position);
+                // if (it != black_list.end()) return true; 
+                if (positionInBlackList(cargo.position, black_list)) return true;     
                 
                 // 大一统判断方式：把整个航线经过的体素都锁定一下，避免反复时序上悬停的判断
                 if (dynamic_grid[cargo.position.y][cargo.position.x] || dynamic_grid[cargo.target_position.y][cargo.target_position.x]){
@@ -767,10 +784,10 @@ int64_t myAlgorithm::solve() {
     // 根据算法计算情况，得出下一轮的算法调用间隔，单位ms
     // 依据需求计算所需的sleep time
     int64_t sleep_time_ms = 500;
-    int64_t takeoff_pending_time_ms = 5000;
+    int64_t takeoff_pending_time_ms = 1000;
     double dangerous_battery = 50;
     double safe_distance = 10;
-    double safety_factor = 1.4;
+    double safety_factor = 1.5;
     double available_breaking_distance = 100;  // 充电站附近的有效停靠点
     _map->Range(&map_min_x, &map_max_x, &map_min_y, &map_max_y, &map_min_z, &map_max_z);
     // 处理无人机信息，找出当前未装载货物的无人机集合
@@ -806,11 +823,12 @@ int64_t myAlgorithm::solve() {
 
         auto available_drone_positions = _task_info->drones;
         for (std::size_t i = 0; i < available_drone_positions.size(); ++i) {
-            const Vec3 pos = available_drone_positions[i].initial_pos;
+            Vec3 pos = available_drone_positions[i].initial_pos;
             LOG(INFO) << "drone_initial_position of " << available_drone_positions[i].drone_id << ": x = " << pos.x 
                     << ", y = " << pos.y << ", z = " << pos.z;
             if(my_drone_info.find(available_drone_positions[i].drone_id) != my_drone_info.end()){
                 my_drone_info[available_drone_positions[i].drone_id].flightplan_takeoff_position = pos;
+                my_drone_info[available_drone_positions[i].drone_id].flightplan_land_position = {-1,-1,-1};
             }
         }
 
@@ -829,9 +847,12 @@ int64_t myAlgorithm::solve() {
 
         auto& landing_positions = _task_info->landing_positions;
         for (std::size_t i = 0; i < landing_positions.size(); ++i) {
-            const Vec3& station = landing_positions[i];
+            Vec3 station = landing_positions[i];
             LOG(INFO) << "landing_stations " << i << ": x = " << station.x 
                     << ", y = " << station.y << ", z = " << station.z;
+            if (densest_static_grid[station.y][station.x]){
+                LOG(INFO) << "landing_stations " << i << " need to be adjusted by voxels!!";
+            }
         }
 
         return sleep_time_ms;
@@ -917,13 +938,14 @@ int64_t myAlgorithm::solve() {
         }
     }
 
-    // 打乱 _drone_info 的顺序
-    auto random_order_drone_info = this->_drone_info;
-    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    std::default_random_engine engine(seed);
-    std::shuffle(random_order_drone_info.begin(), random_order_drone_info.end(), engine);
+    
+    auto procressed_order_drone_info = this->_drone_info;
+    // 打乱 _drone_info 的顺序？
+    // unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    // std::default_random_engine engine(seed);
+    // std::shuffle(procressed_order_drone_info.begin(), procressed_order_drone_info.end(), engine);
 
-    for (auto& drone : random_order_drone_info) {
+    for (auto& drone : procressed_order_drone_info) {
         MyDroneInfo& mydrone = my_drone_info[drone.drone_id];
         MyAirspaceGrid& myairspace = my_airspace_grid[mydrone.flying_height];
         
@@ -931,6 +953,7 @@ int64_t myAlgorithm::solve() {
         // 无人机状态1:平飞
         if (mydrone.drone_status == Status::FLYING) {
             mydrone.wait_to_work = false;
+            mydrone.black_position_list.clear();
             continue;
         }
         //////////////////////////////////////////////////////////////////////////////////////
@@ -979,18 +1002,16 @@ int64_t myAlgorithm::solve() {
         }
 
         // TODO: [by superboySB]这判断到底加在哪里
-        if ((mydrone.drone_status == Status::READY) && (myairspace.dynamic_grid[mydrone.drone_position.y][mydrone.drone_position.x])){
+        if ((mydrone.drone_status == Status::READY) && (myairspace.dynamic_grid[mydrone.drone_position.y][mydrone.drone_position.x]) &&
+            (mydrone.flying_height > 70)){
             LOG(INFO) << drone.drone_id << "\'s current position is dangerous, do not take off now!! original flying height: " << mydrone.flying_height;
             mydrone.flying_height -= 10;
-            if (mydrone.flying_height < 70){
-                mydrone.flying_height = 120;
-            }
             LOG(INFO) << drone.drone_id << " change the flying height to: " << mydrone.flying_height;
             mydrone.flightplan_takeoff_position = mydrone.drone_position;  
             mydrone.flightplan_land_position = {-1,-1,-1};
             mydrone.all_flying_waypoints.clear();
             mydrone.wait_to_work = true;
-            continue;
+            break;
         }
 
         // 无人机状态3.1:关于是否充电
@@ -1043,7 +1064,7 @@ int64_t myAlgorithm::solve() {
 
                 // 删掉已经被其它飞机接单的cargo、其它飞机未来落点下的cargo
                 removeConflictCargoes(cargoes_to_delivery_and_no_accepted, mydrone.unfinished_cargo_ids,
-                            this->_cargo_info, safe_distance, mydrone.flying_height, mydrone.black_cargo_list,
+                            this->_cargo_info, safe_distance, mydrone.flying_height, mydrone.black_position_list,
                             this->_task_info->battery_stations, myairspace.dynamic_grid, safety_factor);
                 
 
@@ -1062,7 +1083,6 @@ int64_t myAlgorithm::solve() {
                     }
                     mydrone.unfinished_cargo_ids = unfinished_order;
                     mydrone.wait_to_work = true;
-                    has_task = true;
                     drones_to_pick.push_back(drone);
                 } else {
                     LOG(INFO) << drone.drone_id << " - can not find any proper cargos....";
@@ -1121,7 +1141,7 @@ int64_t myAlgorithm::solve() {
         }
 
         // 无人机状态3.3: 能干活但是不能一直占着充电站，先去临时站，用来消磨时间等待做task
-        if ((mydrone.drone_status == Status::READY) && (!has_task) && (!need_charge)){
+        if (mydrone.drone_status == Status::READY){
             auto available_breaking_stations = this->_task_info->landing_positions;
             std::sort(available_breaking_stations.begin(), available_breaking_stations.end(), [mydrone, myairspace](Vec3 p1, Vec3 p2) {
                 double drone_to_p1_to_station = distance_3D(mydrone.drone_position, p1);
@@ -1133,12 +1153,20 @@ int64_t myAlgorithm::solve() {
                 if (!can_not_reach_p1 && can_not_reach_p2) return true;
                 if (can_not_reach_p1 && !can_not_reach_p2) return false;
 
+                // 计算是否是黑名单
+                bool is_black_p1 = positionInBlackList(p1, mydrone.black_position_list);
+                bool is_black_p2 = positionInBlackList(p2, mydrone.black_position_list);
+                if (!is_black_p1 && is_black_p2) return true;
+                if (is_black_p1 && !is_black_p2) return false;
+
                 return drone_to_p1_to_station < drone_to_p2_to_station;
             });
 
             int chosen_station_index = 0;
             auto chosen_breaking_station = available_breaking_stations.at(chosen_station_index);
-            if (myairspace.dynamic_grid[chosen_breaking_station.y][chosen_breaking_station.x]){
+            if ((myairspace.dynamic_grid[chosen_breaking_station.y][chosen_breaking_station.x]) 
+                // || (myairspace.dynamic_grid[mydrone.drone_position.y][mydrone.drone_position.x])
+                 ){
                 LOG(INFO) << drone.drone_id << "\'s target breaking station is temporally occupyed!";
                 mydrone.flightplan_takeoff_position = mydrone.drone_position;  
                 mydrone.flightplan_land_position = {-1,-1,-1};
@@ -1156,19 +1184,20 @@ int64_t myAlgorithm::solve() {
 
         // 无人机状态3.4: 应对条件漏网之鱼,现在啥都干不了，也要给出无效航线警告的
         // 原因猜测： 上面乱七八糟，压根不能起飞啊，并且决定降低空域10m，看看能否起飞
-        if ((mydrone.drone_status == Status::READY) && (myairspace.dynamic_grid[mydrone.drone_position.y][mydrone.drone_position.x])){
-            LOG(INFO) << drone.drone_id << "\'s current position is dangerous, do not take off now!! original flying height: " << mydrone.flying_height;
-            mydrone.flying_height -= 10;
-            if (mydrone.flying_height < 70){
-                mydrone.flying_height = 120;
-            }
-            LOG(INFO) << drone.drone_id << " change the flying height to: " << mydrone.flying_height;
-            mydrone.flightplan_takeoff_position = mydrone.drone_position;  
-            mydrone.flightplan_land_position = {-1,-1,-1};
-            mydrone.all_flying_waypoints.clear();
-            mydrone.wait_to_work = true;
-            break; // 每次只规划一架飞机
-        }    
+        // if ((mydrone.drone_status == Status::READY) && (myairspace.dynamic_grid[mydrone.drone_position.y][mydrone.drone_position.x])){
+        //     LOG(INFO) << drone.drone_id << "\'s current position is dangerous, do not take off now!! original flying height: " << mydrone.flying_height;
+        //     mydrone.flying_height -= 10;
+        //     if (mydrone.flying_height < 80){
+        //         mydrone.flying_height = 70;
+        //     }
+        //     LOG(INFO) << drone.drone_id << " change the flying height to: " << mydrone.flying_height;
+        //     mydrone.flightplan_takeoff_position = mydrone.drone_position;  
+        //     mydrone.flightplan_land_position = {-1,-1,-1};
+        //     mydrone.all_flying_waypoints.clear();
+        //     mydrone.wait_to_work = true;
+        //     break; // 每次只规划一架飞机
+        // }    
+
         //////////////////////////////////////////////////////////////////////////////////////
         // 无人机状态4:悬停（应对动态障碍物）
         // if ((mydrone.drone_status == Status::HOVERING) && (!unsafe_flag) 
@@ -1208,10 +1237,10 @@ int64_t myAlgorithm::solve() {
     }
 
     // 获取当前毫秒时间戳（可能会有延迟问题）
-    std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp =
-        std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
-    auto current = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
-    int64_t current_time = current.count();
+    // std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp =
+    //     std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+    // auto current = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
+    // int64_t current_time = current.count();
     std::vector<std::tuple<std::string, FlightPlan>> flight_plans_to_publish;  //下发飞行任务
     DroneLimits dl = this->_task_info->drones.front().drone_limits;
     
@@ -1262,7 +1291,7 @@ int64_t myAlgorithm::solve() {
             mydrone.flightplan_takeoff_position = the_drone.position;
             mydrone.flightplan_land_position = {-1,-1,-1};
             mydrone.all_flying_waypoints.clear();
-            mydrone.black_cargo_list.push_back(the_cargo.id);
+            mydrone.black_position_list.push_back({the_cargo.position});
             mydrone.unfinished_cargo_ids = {-1,-1,-1};
             LOG(INFO) << the_drone.drone_id << " can not move from (" << the_drone.position.x << "," << the_drone.position.y << "," << the_drone.position.z
                       << ") to (" << landing_position.x << "," << landing_position.y << "," << landing_position.z << ") !!!";
@@ -1273,15 +1302,16 @@ int64_t myAlgorithm::solve() {
             pickup.flight_purpose = FlightPurpose::FLIGHT_TAKE_CARGOS;  // 飞行计划目标
             pickup.flight_plan_type = FlightPlanType::PLAN_TRAJECTORIES;  // 飞行计划类型：轨迹
             pickup.flight_id = std::to_string(++Algorithm::flightplan_num);
+            // 获取当前毫秒时间戳（可能会有延迟问题）
+            std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp =
+                std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+            auto current = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
+            int64_t current_time = current.count();
             pickup.takeoff_timestamp = current_time + takeoff_pending_time_ms; 
             pickup.segments = pickup_waypoints;
             // 在下发飞行计划前，选手可以使用该函数自行先校验飞行计划的可行性
             auto reponse_pickup = this->_planner->ValidateFlightPlan(dl, pickup);
             LOG(INFO) << "ValidateFlightPlan, sussess: " << reponse_pickup.success << ", err msg: " << reponse_pickup.msg;
-            if ((!reponse_pickup.success) || (reponse_pickup.msg == "empty segments")){
-                LOG(INFO) << "Move to blacklist: " << the_cargo.id;
-                mydrone.black_cargo_list.push_back(the_cargo.id);        
-            }
             double total_flight_seconds = pickup_flight_time/1000;
             if ((total_flight_seconds + distance_2D(the_cargo.position,the_cargo.target_position)*1.0/15 + 20 < the_cargo.latest_seconds_left) 
             && (total_flight_seconds/20*3<the_drone.battery)){
@@ -1361,16 +1391,17 @@ int64_t myAlgorithm::solve() {
                 delivery.flight_purpose = FlightPurpose::FLIGHT_DELIVER_CARGOS;
                 delivery.flight_plan_type = FlightPlanType::PLAN_TRAJECTORIES;
                 delivery.flight_id = std::to_string(++Algorithm::flightplan_num);
+                // 获取当前毫秒时间戳（可能会有延迟问题）
+                std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp =
+                    std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+                auto current = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
+                int64_t current_time = current.count();
                 delivery.takeoff_timestamp = current_time + takeoff_pending_time_ms;
                 delivery.segments = delivery_traj;
                 delivery.target_cargo_ids.push_back(the_cargo.id);
                 // 在下发飞行计划前，选手可以使用该函数自行先校验飞行计划的可行性
                 auto reponse_delivery = this->_planner->ValidateFlightPlan(dl, delivery);
                 LOG(INFO) << "ValidateFlightPlan, sussess: " << reponse_delivery.success <<", err msg: " << reponse_delivery.msg;
-                if ((!reponse_delivery.success)||(reponse_delivery.msg == "empty segments")){
-                    LOG(INFO) << "Move to blacklist: " << the_cargo.id;
-                    my_drone_info[the_drone.drone_id].black_cargo_list.push_back(the_cargo.id);
-                }
 
                 double total_flight_seconds = delivery_flight_time/1000;
                 if ( total_flight_seconds < the_cargo.latest_seconds_left){
@@ -1424,6 +1455,11 @@ int64_t myAlgorithm::solve() {
             recharge.flight_purpose = FlightPurpose::FLIGHT_EXCHANGE_BATTERY;
             recharge.flight_plan_type = FlightPlanType::PLAN_TRAJECTORIES;
             recharge.flight_id = std::to_string(++Algorithm::flightplan_num);
+            // 获取当前毫秒时间戳（可能会有延迟问题）
+            std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp =
+                std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+            auto current = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
+            int64_t current_time = current.count();
             recharge.takeoff_timestamp = current_time + takeoff_pending_time_ms;
             recharge.segments = recharege_traj;
 
@@ -1464,6 +1500,7 @@ int64_t myAlgorithm::solve() {
             mydrone.flightplan_takeoff_position = the_drone.position;
             mydrone.flightplan_land_position = {-1,-1,-1};
             mydrone.all_flying_waypoints.clear();
+            mydrone.black_position_list.push_back({landing_position});
             LOG(INFO) << the_drone.drone_id << " can not move from (" << the_drone.position.x << "," << the_drone.position.y << "," << the_drone.position.z
                     << ") to (" << landing_position.x << "," << landing_position.y << "," << landing_position.z << ") !!!";
         } else {
@@ -1473,6 +1510,11 @@ int64_t myAlgorithm::solve() {
             breaking.flight_purpose = FlightPurpose::FLIGHT_COMMON;
             breaking.flight_plan_type = FlightPlanType::PLAN_TRAJECTORIES;
             breaking.flight_id = std::to_string(++Algorithm::flightplan_num);
+            // 获取当前毫秒时间戳（可能会有延迟问题）
+            std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp =
+                std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+            auto current = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
+            int64_t current_time = current.count();
             breaking.takeoff_timestamp = current_time + takeoff_pending_time_ms;
             breaking.segments = breaking_traj;
 
