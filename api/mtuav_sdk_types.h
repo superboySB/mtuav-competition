@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+// SegmentType
 #define ST_TAKING_OFF 0
 #define ST_FLYING 1
 #define ST_LANDING 2
@@ -12,7 +13,6 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-
 typedef struct Vec3 {
   double x;
   double y;
@@ -21,7 +21,7 @@ typedef struct Vec3 {
 
 typedef struct Segment {
   uint64_t time_ms;         // 在time_ms飞行到目标位置，此时间是相对于起飞时间
-  int seg_type;             // 此片段是那种类型，起飞、飞行、降落；要求起飞和降落必须垂直
+  int seg_type;             // 此片段是那种类型，起飞(0)、飞行(1)、降落(2)；要求起飞和降落必须垂直
   Vec3 position;            // 目标位置
   Vec3 v;                   // 到达目标位置时的速度，轨迹专用
   Vec3 a;                   // 到达目标位置时的加速度，轨迹专用
@@ -38,25 +38,25 @@ typedef struct DroneLimits {
   // 最大速度
   double max_fly_speed_v;
   double max_fly_speed_h;
-  // 最大飞行加速度（两个分量可以同时达到最大值的哦）
+  // 最大飞行加速度
   double max_fly_acc_v;
   double max_fly_acc_h;
   // 最大载重
   double max_weight;
   // 最大货物数
   double max_cargo_slots;
-  double min_fly_height;  // 70m
-  double max_fly_height;  // 120m
+  double min_fly_height;
+  double max_fly_height;
   // 最大飞行时间
   double max_flight_seconds;
 } DroneLimits;
 
 enum CargoStatus {
-  CARGO_UNKNOWN = 0,  // 默认值
-  CARGO_WAITING = 1,  // 不取外卖会一直存在，奖励持续变低，惩罚持续增加
+  CARGO_UNKNOWN = 0,
+  CARGO_WAITING = 1,
   CARGO_DELIVERING = 2,
   CARGO_DELIVERED = 3,
-  CARGO_FAILED = 4,  // 飞机炸机后，带的货物就炸了
+  CARGO_FAILED = 4,
 };
 
 typedef struct CargoInfo {
@@ -72,7 +72,7 @@ typedef struct CargoInfo {
   double award;
   // 需要运送的位置
   Vec3 target_position;
-  // 距离用户期望送达还剩多少秒，<0表示已经超时；这个之前送达能获得增大奖励
+  // 距离用户期望送达还剩多少秒，<0表示已经超时；
   int expected_seconds_left;
   // 距离最晚送达时间还剩多少秒，<0表示已经超时；这个之后送达会有惩罚（如果时间不够，可以选择放弃此单）
   int latest_seconds_left;
@@ -103,17 +103,15 @@ enum FlightPlanType {
   PLAN_TRAJECTORIES = 1,
 };
 
-// 理论上静态航线+时间戳=要执行的航线，可以根据目标时间戳生成flight_id
- // 目前这个id只用来防止重复执行。任务执行完成，要根据飞机的状态来判断。
- // 要改变原来的飞行计划，必须用新的id。
 typedef struct FlightPlan {
   // 飞行计划类型：航点/轨迹
   FlightPlanType flight_plan_type;
   // 此飞行计划的目的：换电/取货/送货
   FlightPurpose flight_purpose;
-  // 标识航线，一个id只能执行一次，用于现在同一条航线的多次规划（新的规划要对应新的id）
+  // 标识航线，一个id只能执行一次，用于现在同一条航线的多次规划
   std::string flight_id;
   // 航线起飞的时间（UTC+8时间），单位是毫秒
+  // EXTRA：复赛额外限制，无人机收到航线时，若已经超过起飞时间，航线会被忽略。
   uint64_t takeoff_timestamp;
   // 所有飞行的片段，无人机会根据flight_plan_type来执行
   std::vector<Segment> segments;
@@ -138,7 +136,7 @@ typedef struct TaskInfo {
   std::vector<DroneInfo> drones;
   // 电量是否会消耗
   bool battery_consuming;
-  // 初赛中无障碍物
+  // 任务中是否存在动态障碍物
   bool has_obstacles;
   // 换电站信息
   std::vector<Vec3> battery_stations;
@@ -163,19 +161,29 @@ enum Status {
   READY_TO_FLY = 6,
 };
 
-enum ObstacleType { // 应该特指的都是移动的飞机
+
+enum ObstacleType {
   OBSTACLE_UNKNOWN = 0,
+  // 比较规则的运动，速度和加速度都可能很快
   OBSTACLE_DRONE = 1,
+  // 不规则运动（转向频繁），速度不会太快，加速度可能较大
   OBSTACLE_BIRD = 2,
+  // 规则运动，速度和加速度都较小
   OBSTACLE_KITE = 3,
 };
 
-// 初赛中不会出现动态障碍物
+// 动态障碍物
 typedef struct ObstacleInfo {
+  // 在地图中的位置
   Vec3 position;
+  // 地图坐标系下的速度
   Vec3 velocity;
+  // 碰撞距离，现在默认都是5
   double radius;
+  // 类型，一般为1、2或者3
   ObstacleType obstacle_type;
+  // 提供了障碍物ID，方便跟踪障碍物
+  std::string id;
 } ObstacleInfo;
 
 enum DroneCrashType {
@@ -184,18 +192,26 @@ enum DroneCrashType {
   DRONE_CRASH_COLLIDE_OBSTACLE = 2,
   DRONE_CRASH_COLLIDE_DRONE = 3,
   DRONE_CRASH_LANDED_ON_ILLEGAL_POSITION = 4,
+  // 撞了动态障碍物
+  DRONE_CRASH_COLLIDE_DYNAMIC_OBSTACLE = 5,
 };
 
 typedef struct DroneStatus {
   std::string drone_id;
-  uint64_t timestamp;  // 当前时间戳
+  uint64_t timestamp;
   Status status;
-  Vec3 position;   // 当前位置坐标
-  double height;                            // distance to ground
-  std::vector<int> delivering_cargo_ids;   // 所挂餐箱编号的集合
-  float battery; // 剩余电量
-  std::vector<ObstacleInfo> detected_obstacles; // 当前已知障碍物，这里指的是动态障碍物，初赛不会出现动态障碍物
-  DroneCrashType crash_type; // 如果status == CRASH，这里记录原因
+  Vec3 position;
+  double height;                              // currently equal to position.z
+  std::vector<int> delivering_cargo_ids;
+  // 剩余电量
+  float battery;
+  // 飞机当前探测到的动态障碍物，探测距离60米
+  // 若飞机和动态障碍物距离小于5米，会被认为相撞
+  // 相撞后，飞机被标记为CRASH，炸机类型为DRONE_CRASH_COLLIDE_DYNAMIC_OBSTACLE(5)
+  // 相撞后，障碍物本身不会消失，后续会继续出现（避免对子情况）
+  std::vector<ObstacleInfo> detected_obstacles;
+  // 如果status == CRASH，这里记录原因
+  DroneCrashType crash_type;
 } DroneStatus;
 
 typedef struct Response {
