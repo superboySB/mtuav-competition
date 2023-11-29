@@ -11,14 +11,14 @@ RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime && echo "Asia/Shangh
     ntpdate -b -p 5 -u cn.ntp.org.cn
 
 # Install OR-tools
-RUN cd /workspace && git clone https://github.com/google/or-tools
-RUN cd /workspace/or-tools && cmake -S . -B build -DBUILD_DEPS=ON && \
+# RUN cd /workspace && git clone https://github.com/google/or-tools
+# RUN cd /workspace/or-tools && cmake -S . -B build -DBUILD_DEPS=ON && \
     cmake --build build --config Release --target all -j -v && \
     cmake --build build --config Release --target test -v && \
     cmake --build build --config Release --target install -v
 
 # Install Polylidar
-RUN cd /workspace && git clone https://github.com/superboySB/polylidar && cd polylidar && mkdir build && cd build && \
+# RUN cd /workspace && git clone https://github.com/superboySB/polylidar && cd polylidar && mkdir build && cd build && \
     cmake .. -DFETCHCONTENT_QUIET=OFF -DPYTHON_EXECUTABLE=$(python3 -c "import sys; print(sys.executable)") && \
     make -j8 && ./bin/polylidar-simple
 # RUN pip install --upgrade pip && cmake --build . --target python-package --config Release -j4 && cd lib/python_package && pip install -e . && \
