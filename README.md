@@ -10,7 +10,7 @@
 ## 准备
 下拉美团提供的可视化docker镜像：
 ```sh
-docker pull marcobright2023/mtuav-competition:standalone
+docker pull marcobright2023/mtuav-competition:standalone-final
 ```
 下拉自研算法开发相关的docker镜像，如果需要显卡支持，可以参考这个[教程](https://docs.nvidia.com/ngc/gpu-cloud/ngc-user-guide/index.html#generating-api-key)进行NGC API的注册
 ```sh
@@ -26,7 +26,7 @@ docker build -t mtuav_image:1.0 .
 
 拉好镜像后，首先启动美团镜像，并放置在后台
 ```sh
-docker run -id --name=mtuav-vis -p 8888:8888 -p 50051:50051 -v ./mt-log:/mt-log marcobright2023/mtuav-competition:standalone start
+docker run -id --name=mtuav-vis -p 8888:8888 -p 50051:50051 -v ./mt-log:/mt-log marcobright2023/mtuav-competition:standalone-final start
 ```
 通常加载任务运行后，可以看到`./mt-log`中会有相应的日志打印，然后启动算法开发镜像，也放置在后台
 ```sh
