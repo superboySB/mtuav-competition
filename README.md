@@ -43,7 +43,7 @@ git clone --recursive https://github.com/superboySB/mtuav-competition && cd mtua
 
 # 如果你忘记了--recursive，则输入：git submodule update --init --recursive
 ```
-由于github限制，要先从[官方SDK下载页面](http://dpurl.cn/lLbhoTvz)里把`map/competition_map.bin`、`map/test_map.bin`文件拖进相应文件夹内（只有在线测试需要competition_map.bin）。对于我们算法中的路径规划部分，这是一个单独的module，应该率先生成相应的so文件到本地，
+由于github限制，要先从[官方SDK下载页面](http://dpurl.cn/lLbhoTvz)里把`map/final_map.bin`、`map/test_map.bin`文件拖进相应文件夹内（只有在线测试需要final_map.bin）。对于我们算法中的路径规划部分，这是一个单独的module，应该率先生成相应的so文件到本地，
 ```sh
 cd /workspace/mtuav-competition/thirdparty/pathfind
 go mod tidy

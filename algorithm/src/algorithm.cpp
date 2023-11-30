@@ -147,6 +147,38 @@ Vec2 calculatePolygonCentroid(const std::vector<Vec2>& points) {
     return Vec2{centroidX, centroidY};
 }
 
+
+// void fillGapsInObstacles(std::vector<std::vector<int>>& grid, const std::vector<std::vector<int>>& stationGrid, int maxGapSize) {
+//     std::vector<std::vector<int>> tempGrid = grid;
+//     int gridHeight = grid.size();
+//     int gridWidth = grid[0].size();
+
+//     // 分步处理，逐渐增加gapSize
+//     for (int gapSize = 1; gapSize <= maxGapSize; gapSize++) {
+//         for (int y = 0; y < gridHeight; y++) {
+//             for (int x = 0; x < gridWidth; x++) {
+//                 if (grid[y][x] == 0 && stationGrid[y][x] == 0) { // 非障碍物且非充电站
+//                     int obstacleCount = 0;
+//                     for (int dy = -gapSize; dy <= gapSize; dy++) {
+//                         for (int dx = -gapSize; dx <= gapSize; dx++) {
+//                             int newY = y + dy;
+//                             int newX = x + dx;
+//                             if (newY >= 0 && newY < gridHeight && newX >= 0 && newX < gridWidth) {
+//                                 obstacleCount += (grid[newY][newX] == 1);
+//                             }
+//                         }
+//                     }
+//                     // 根据周围障碍物数量决定是否填充
+//                     if (obstacleCount >= (gapSize * gapSize) / 2) { // 可调整阈值
+//                         tempGrid[y][x] = 1;
+//                     }
+//                 }
+//             }
+//         }
+//         grid = tempGrid; // 更新网格
+//     }
+// }
+
 // 初始化+预计算
 void myAlgorithm::initialize_static_grid(std::vector<Vec3> raw_battery_station_positions, float voxel_obs_distance) {
     std::vector<float> available_flying_height = {120,110,100,90,80,70};
@@ -172,6 +204,7 @@ void myAlgorithm::initialize_static_grid(std::vector<Vec3> raw_battery_station_p
                 }
             }
         }
+
         // 给比较恶心的充电站附近放一点空间，否则充电站就废了
         for (std::size_t i = 0; i < raw_battery_station_positions.size(); ++i) {
             auto& station = raw_battery_station_positions[i];
@@ -202,6 +235,17 @@ void myAlgorithm::initialize_static_grid(std::vector<Vec3> raw_battery_station_p
                 }
             }
         }
+
+        // 躲避充电站的位置
+        // 对障碍物进行聚类，半径设为20
+        // std::vector<std::vector<int>> stationGrid = grid; // Same size as grid, for marking stations
+        // for (const auto& station : raw_battery_station_positions) {
+        //     int stationX = static_cast<int>(station.x);
+        //     int stationY = static_cast<int>(station.y);
+        //     stationGrid[stationY][stationX] = 1;
+        // }
+        // // 对障碍物进行聚类，最大间隙设为20
+        // fillGapsInObstacles(grid, stationGrid, 2);
 
         // 初始化飞行格子
         my_airspace_grid[z].static_grid = grid;
@@ -415,7 +459,7 @@ void myAlgorithm::update_dynamic_grid(std::string this_drone_id, MyAirspaceGrid&
           && (std::fabs(other_current_position.y - other_takeoff_position.y) < epsilon)
           && (other_land_position.x > -1)){
             add_takeoff_grid(pair.second,myairspace,safe_distance*factor);  
-            if (self_flying_height >= other_flying_height) {
+            if (self_flying_height >= other_flying_height && can_change_height) {
                 add_flying_grid(pair.second,myairspace,safe_distance*factor);
             }
             add_landing_grid(pair.second,myairspace,safe_distance*factor);
@@ -424,7 +468,7 @@ void myAlgorithm::update_dynamic_grid(std::string this_drone_id, MyAirspaceGrid&
         
         // 当前位置处于平飞阶段
         if (other_status == Status::FLYING){
-            if (self_flying_height >= other_flying_height) {
+            if (self_flying_height >= other_flying_height && can_change_height) {
                 add_flying_grid(pair.second, myairspace, safe_distance*factor);
             }
             add_landing_grid(pair.second, myairspace, safe_distance*factor);
@@ -437,6 +481,17 @@ void myAlgorithm::update_dynamic_grid(std::string this_drone_id, MyAirspaceGrid&
             continue;
         }
     }
+}
+
+double calculateMinDistance(const std::vector<Vec2>& polygon1, const std::vector<Vec2>& polygon2) {
+    double minDistance = std::numeric_limits<double>::max();
+    for (const auto& point1 : polygon1) {
+        for (const auto& point2 : polygon2) {
+            double distance = sqrt(pow(point1.x - point2.x, 2) + pow(point1.y - point2.y, 2));
+            minDistance = std::min(minDistance, distance);
+        }
+    }
+    return minDistance;
 }
 
 // 一方面用于进行路径规划，另一方面也可以用来判断可达性
@@ -479,6 +534,9 @@ std::vector<Vec3> generate_waypoints_by_a_star(Vec3 start, Vec3 end, double flyi
     Polylidar::Planes planes;
     Polylidar::Polygons polygons;
     std:tie(mesh, planes, polygons) = pl.ExtractPlanesAndPolygons(points);
+
+    std::vector<std::vector<Vec2>> allSimplifiedPolygons;
+
     for (int i=0; i< polygons.size(); i++)
     {
         // 第1步：稠密边界点
@@ -493,54 +551,66 @@ std::vector<Vec3> generate_waypoints_by_a_star(Vec3 start, Vec3 end, double flyi
 
         // 第2步：稀疏边界点
         std::vector<Vec2> simplified_points;
-        // simplified_points = original_points; // 不简化对比
-        // const double min_edge_length = 4; // 调整相近的点
         const double angle_eps = 5; // 设定一个阈值，例如10度，可以根据需要调整
-        // Vec2 center = calculatePolygonCentroid(original_points);
         for (int i = 0; i < original_points.size(); ++i) {
             const Vec2& prev = original_points[i == 0 ? original_points.size() - 1 : i - 1];
             const Vec2& curr = original_points[i];
             const Vec2& next = original_points[(i + 1) % original_points.size()];  
-            // // 检查当前边是否足够长
-            // if (norm(Vec2{curr.x - prev.x, curr.y - prev.y}) < min_edge_length) {
-            //     // 如果当前边不够长，比较与中心点的距离，保留较远的点
-            //     double dist_to_center_curr = norm(Vec2{center.x - curr.x, center.y - curr.y});
-            //     double dist_to_center_prev = norm(Vec2{center.x - prev.x, center.y - prev.y});
-            //     if (dist_to_center_curr < dist_to_center_prev) {
-            //         continue; // 跳过当前点，因为它比前一个点更接近中心
-            //     }
-            // }  
             // 使用角度判断是否为关键拐点
             if (!areCollinear(prev, curr, next, angle_eps)) {
                 simplified_points.push_back(curr);
             }
         }
 
-        // 第3步：输出这一块的部分json段
+        // 存储简化后的凹包
+        allSimplifiedPolygons.push_back(simplified_points);
+    }
+
+    // 合并相邻的凹包
+    // const double mergeThreshold = 20.0; // 设置合并的阈值
+    // std::vector<bool> merged(polygons.size(), false);
+    // for (size_t i = 0; i < allSimplifiedPolygons.size(); i++) {
+    //     if (merged[i]) continue;
+    //     for (size_t j = i + 1; j < allSimplifiedPolygons.size(); j++) {
+    //         if (merged[j]) continue;
+    //         double minDistance = calculateMinDistance(allSimplifiedPolygons[i], allSimplifiedPolygons[j]);
+    //         if (minDistance < mergeThreshold) {
+    //             // 合并凹包
+    //             allSimplifiedPolygons[i].insert(allSimplifiedPolygons[i].end(),
+    //                                             allSimplifiedPolygons[j].begin(),
+    //                                             allSimplifiedPolygons[j].end());
+    //             merged[j] = true;
+    //         }
+    //     }
+    // }
+
+    // 生成JSON格式的数据
+    for (size_t i = 0; i < allSimplifiedPolygons.size(); i++) {
+        // if (merged[i]) continue; // 跳过已经被合并的凹包
         json_stream << "[";
-        for (size_t j = 0; j < simplified_points.size(); ++j) {
-            json_stream << "{\"x\": " << simplified_points[j].x
-                        << ", \"y\": " << simplified_points[j].y << "}";
-            if (j < simplified_points.size() - 1) {
+        for (size_t j = 0; j < allSimplifiedPolygons[i].size(); ++j) {
+            json_stream << "{\"x\": " << allSimplifiedPolygons[i][j].x
+                        << ", \"y\": " << allSimplifiedPolygons[i][j].y << "}";
+            if (j < allSimplifiedPolygons[i].size() - 1) {
                 json_stream << ",";
             }
         }
         json_stream << "]";
-
-        if (i < polygons.size() - 1) {
+        if (i < allSimplifiedPolygons.size() - 1) {
             json_stream << ",";
         }
     }
+    
     json_stream << R"json(]})json";
     std::string floorPlan = json_stream.str();
 
     // 第4步：用于调试json形式（在go后台demo代码上可以独立验证）
-    // std::ostringstream filename_stream;
-    // filename_stream << "/workspace/mtuav-competition/log/map-" << drone.drone_id << ".json";
-    // std::string filename = filename_stream.str();
-    // std::ofstream file_out(filename);
-    // file_out << floorPlan;
-    // file_out.close();
+    std::ostringstream filename_stream;
+    filename_stream << "/workspace/mtuav-competition/log/map-0.json";
+    std::string filename = filename_stream.str();
+    std::ofstream file_out(filename);
+    file_out << floorPlan;
+    file_out.close();
     ////////////////
 
     std::vector<char> writable(floorPlan.begin(), floorPlan.end());
@@ -789,12 +859,13 @@ int64_t myAlgorithm::solve() {
     auto start_time = std::chrono::high_resolution_clock::now();
     // 根据算法计算情况，得出下一轮的算法调用间隔，单位ms
     // 依据需求计算所需的sleep time
-    int64_t sleep_time_ms = 200;
-    int64_t takeoff_pending_time_ms = 10000;
+    int64_t sleep_time_ms = 1000;
+    int64_t takeoff_pending_time_ms = 2000;
     double dangerous_battery = 50;  // TODO: 新地图会比较大哦
     double safe_distance = 10;
-    double safety_factor = 1.5;
-    float voxel_obs_distance = 4;
+    double safety_factor = 1.2;
+    float voxel_obs_distance = 8;
+    bool can_change_height=false; // TODO: true->使用灵活配高方案，false->使用固定空域方案
 
     _map->Range(&map_min_x, &map_max_x, &map_min_y, &map_max_y, &map_min_z, &map_max_z);
     // 处理无人机信息，找出当前未装载货物的无人机集合
@@ -808,22 +879,45 @@ int64_t myAlgorithm::solve() {
     if (my_drone_info.empty()){
         LOG(INFO) << "Initialize our used drones!";
         
-        // 当前方案（灵活配高）
+        // 保命方案（划分领空）
         my_drone_info["drone-001"].flying_height = 120;
-        my_drone_info["drone-002"].flying_height = 120;
-        my_drone_info["drone-003"].flying_height = 120;
-        my_drone_info["drone-004"].flying_height = 120;
-        my_drone_info["drone-005"].flying_height = 120;
-        my_drone_info["drone-006"].flying_height = 120;
-        my_drone_info["drone-007"].flying_height = 120;
-        my_drone_info["drone-008"].flying_height = 120;
-        my_drone_info["drone-009"].flying_height = 120;
-        my_drone_info["drone-010"].flying_height = 120;
-        my_drone_info["drone-011"].flying_height = 120;
-        my_drone_info["drone-012"].flying_height = 120;
-        my_drone_info["drone-013"].flying_height = 120;
-        my_drone_info["drone-014"].flying_height = 120;
-        my_drone_info["drone-015"].flying_height = 120;
+        my_drone_info["drone-003"].flying_height = 110;
+        my_drone_info["drone-005"].flying_height = 100;
+        my_drone_info["drone-007"].flying_height = 90;
+        my_drone_info["drone-009"].flying_height = 80;
+        my_drone_info["drone-011"].flying_height = 70;
+
+        // 研究方案（灵活配高）
+        // my_drone_info["drone-001"].flying_height = 120;
+        // my_drone_info["drone-002"].flying_height = 120;
+        // my_drone_info["drone-003"].flying_height = 120;
+        // my_drone_info["drone-004"].flying_height = 120;
+        // my_drone_info["drone-005"].flying_height = 120;
+        // my_drone_info["drone-006"].flying_height = 120;
+        // my_drone_info["drone-007"].flying_height = 120;
+        // my_drone_info["drone-008"].flying_height = 120;
+        // my_drone_info["drone-009"].flying_height = 120;
+        // my_drone_info["drone-010"].flying_height = 120;
+        // my_drone_info["drone-011"].flying_height = 120;
+        // my_drone_info["drone-012"].flying_height = 120;
+        // my_drone_info["drone-013"].flying_height = 120;
+        // my_drone_info["drone-014"].flying_height = 120;
+        // my_drone_info["drone-015"].flying_height = 120;
+        // my_drone_info["drone-016"].flying_height = 120;
+        // my_drone_info["drone-017"].flying_height = 120;
+        // my_drone_info["drone-018"].flying_height = 120;
+        // my_drone_info["drone-019"].flying_height = 120;
+        // my_drone_info["drone-020"].flying_height = 120;
+        // my_drone_info["drone-021"].flying_height = 120;
+        // my_drone_info["drone-022"].flying_height = 120;
+        // my_drone_info["drone-023"].flying_height = 120;
+        // my_drone_info["drone-024"].flying_height = 120;
+        // my_drone_info["drone-025"].flying_height = 120;
+        // my_drone_info["drone-026"].flying_height = 120;
+        // my_drone_info["drone-027"].flying_height = 120;
+        // my_drone_info["drone-028"].flying_height = 120;
+        // my_drone_info["drone-029"].flying_height = 120;
+        // my_drone_info["drone-030"].flying_height = 120;
 
         // 更新初始固定障碍物，顺便修改一下充电站的位置
         initialize_static_grid(_task_info->battery_stations, voxel_obs_distance);
@@ -905,7 +999,6 @@ int64_t myAlgorithm::solve() {
     // 维护无人机状态机的内容
     for (auto& drone : this->_drone_info) {
         if(my_drone_info.find(drone.drone_id) == my_drone_info.end()){
-            LOG(INFO) << "Now we do not use: " << drone.drone_id;
             continue;
         }
         else{
@@ -935,6 +1028,13 @@ int64_t myAlgorithm::solve() {
             for (auto c: my_drone_info[drone.drone_id].unfinished_cargo_ids) LOG(INFO) << "unfinished-c-id: " << c;
 
             // 结束充电状态，满电进入后续环节
+            bool has_cargo = false;
+            for (auto cargo_id: my_drone_info[drone.drone_id].current_cargo_ids){
+                if (cargo_id!=-1){
+                    has_cargo = true;
+                    break;
+                }
+            }
             if ((my_drone_info[drone.drone_id].drone_status == Status::READY) && (my_drone_info[drone.drone_id].drone_battery > 95)
               && (my_drone_info[drone.drone_id].target_charging_station.x>=0)){
                 my_drone_info[drone.drone_id].target_charging_station = {-1,-1,-1};
@@ -942,6 +1042,9 @@ int64_t myAlgorithm::solve() {
                 my_drone_info[drone.drone_id].flightplan_land_position = {-1,-1,-1};
                 my_drone_info[drone.drone_id].all_flying_waypoints.clear();
                 my_drone_info[drone.drone_id].wait_to_work = true;
+                if(!has_cargo){
+                    my_drone_info[drone.drone_id].unfinished_cargo_ids = {-1,-1,-1};
+                }
             }
             LOG(INFO) << drone.drone_id << "\'s target charging station:" 
                                         << " " << my_drone_info[drone.drone_id].target_charging_station.x
@@ -957,11 +1060,19 @@ int64_t myAlgorithm::solve() {
     auto procressed_order_drone_info = this->_drone_info;
     // 尝试打乱 _drone_info 的顺序、可以加快效率？但这样对test_map的前端可视化不好，不打乱的话还有助于固定随机种子
     // TODO：目前收敛的结论，单机调试不建议用，在线比赛可以冒险一试（seed出奇迹）
-    unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
-    std::default_random_engine engine(seed);
-    std::shuffle(procressed_order_drone_info.begin(), procressed_order_drone_info.end(), engine);
+    // unsigned seed = std::chrono::system_clock::now().time_since_epoch().count();
+    // std::default_random_engine engine(seed);
+    // std::shuffle(procressed_order_drone_info.begin(), procressed_order_drone_info.end(), engine);
 
     for (auto drone : procressed_order_drone_info) {
+        if (this->_cargo_info.size() < 3){
+            LOG(INFO) << "Cargos are too few, as: " << this->_cargo_info.size();
+            continue;
+        }
+        if(my_drone_info.find(drone.drone_id) == my_drone_info.end()){
+            LOG(INFO) << "Now we do not use: " << drone.drone_id;
+            continue;
+        }
         MyDroneInfo& mydrone = my_drone_info[drone.drone_id];
         MyAirspaceGrid& myairspace = my_airspace_grid[mydrone.flying_height];
         
@@ -981,7 +1092,7 @@ int64_t myAlgorithm::solve() {
         // 无人机状态2:降落
         // 下次还从最高空开始尝试、管制最低
         if (mydrone.drone_status == Status::LANDING) {
-            mydrone.flying_height = 120;
+            if (can_change_height) mydrone.flying_height = 120;
             continue;
         }
         //////////////////////////////////////////////////////////////////////////////////////
@@ -1013,7 +1124,7 @@ int64_t myAlgorithm::solve() {
         update_dynamic_grid(drone.drone_id, myairspace, safe_distance, safety_factor);
 
         // TODO: [by superboySB]这判断到底加在哪里
-        if ((mydrone.drone_status == Status::READY) && (myairspace.dynamic_grid[mydrone.drone_position.y][mydrone.drone_position.x])){
+        if ((mydrone.drone_status == Status::READY) && (myairspace.dynamic_grid[mydrone.drone_position.y][mydrone.drone_position.x]) && can_change_height){
             LOG(INFO) << drone.drone_id << "\'s current position is dangerous, do not take off now!! original flying height: " << mydrone.flying_height;
             if (mydrone.flying_height > 70){
                 mydrone.flying_height -= 10;
@@ -1032,15 +1143,21 @@ int64_t myAlgorithm::solve() {
         // 判断此时为缺电状态
         if ((mydrone.drone_status == Status::READY) && (need_charge) && (mydrone.target_charging_station.x == -1)){
             auto available_battery_stations = battery_station_positions;
-            std::sort(available_battery_stations.begin(), available_battery_stations.end(), [drone, myairspace](Vec3 p1, Vec3 p2) {
+            std::sort(available_battery_stations.begin(), available_battery_stations.end(), [drone, myairspace, can_change_height](Vec3 p1, Vec3 p2) {
                 double p1_to_drone = distance_3D(drone.position, p1);
                 double p2_to_drone = distance_3D(drone.position, p2);
 
-                // 计算是否能够到达相应充电站（如果确实能到的话，那尽量就近吧，可惜确实有在墙边的，太狠了）
-                bool can_not_reach_p1 = myairspace.dynamic_grid[p1.y][p1.x];
-                bool can_not_reach_p2 = myairspace.dynamic_grid[p2.y][p2.x];
-                if (!can_not_reach_p1 && can_not_reach_p2) return true;
-                if (can_not_reach_p1 && !can_not_reach_p2) return false;
+                if(can_change_height){
+                    bool can_not_reach_p1 = myairspace.dynamic_grid[p1.y][p1.x];
+                    bool can_not_reach_p2 = myairspace.dynamic_grid[p2.y][p2.x];
+                    if (!can_not_reach_p1 && can_not_reach_p2) return true;
+                    if (can_not_reach_p1 && !can_not_reach_p2) return false;
+                } else {
+                    bool can_not_reach_p1 = myairspace.static_grid[p1.y][p1.x];
+                    bool can_not_reach_p2 = myairspace.static_grid[p2.y][p2.x];
+                    if (!can_not_reach_p1 && can_not_reach_p2) return true;
+                    if (can_not_reach_p1 && !can_not_reach_p2) return false;
+                }
 
                 return p1_to_drone < p2_to_drone;
             });
@@ -1050,13 +1167,16 @@ int64_t myAlgorithm::solve() {
             // 考虑是否可达（包括占用）
             if (myairspace.dynamic_grid[chosen_charging_station.y][chosen_charging_station.x]){
                 LOG(INFO) << drone.drone_id << "\'s target charging station is temporally occupyed!";
-                LOG(INFO) << drone.drone_id << "\'s current position is dangerous, do not take off now!! original flying height: " << mydrone.flying_height;
-                if (mydrone.flying_height > 70){
-                    mydrone.flying_height -= 10;
-                } else {
-                    mydrone.flying_height = 120;
+                if (can_change_height){
+                    LOG(INFO) << drone.drone_id << "\'s current position is dangerous, do not take off now!! original flying height: " << mydrone.flying_height;
+                    if (mydrone.flying_height > 70){
+                        mydrone.flying_height -= 10;
+                    } else {
+                        mydrone.flying_height = 120;
+                    }
+                    LOG(INFO) << drone.drone_id << " change the flying height to: " << mydrone.flying_height;
                 }
-                LOG(INFO) << drone.drone_id << " change the flying height to: " << mydrone.flying_height;
+                
                 mydrone.flightplan_takeoff_position = mydrone.drone_position;  
                 mydrone.flightplan_land_position = {-1,-1,-1};
                 mydrone.all_flying_waypoints.clear();
@@ -1067,8 +1187,8 @@ int64_t myAlgorithm::solve() {
                 mydrone.target_charging_station = chosen_charging_station;
                 drones_need_recharge.push_back(drone); 
                 mydrone.wait_to_work = true;
-                break; // 每次只规划一架飞机
             }
+            break; // 每次只规划一架飞机
         }        
 
         // 无人机状态3.2:关于取货、送货（假设此时电量充足）
@@ -1107,7 +1227,6 @@ int64_t myAlgorithm::solve() {
                     mydrone.unfinished_cargo_ids = unfinished_order;
                     mydrone.wait_to_work = true;
                     drones_to_pick.push_back(drone);
-                    break; // 每次只规划一架飞机 
                 } else {
                     LOG(INFO) << drone.drone_id << " - can not find any proper cargos....";
                 }                
@@ -1121,7 +1240,6 @@ int64_t myAlgorithm::solve() {
                         mydrone.all_flying_waypoints.clear();
                     } else{
                         drones_to_pick.push_back(drone); // 没有取到所有货物，先取货物
-                        break; // 每次只规划一架飞机 
                     }
                 }
                 else{
@@ -1132,10 +1250,10 @@ int64_t myAlgorithm::solve() {
                         mydrone.all_flying_waypoints.clear();
                     } else{
                         drones_to_delivery.push_back(drone); // 应该已经取到所有货物了，开始配送
-                        break; // 每次只规划一架飞机 
                     }
                 }
             }
+            break; // 每次只规划一架飞机 
         }
 
         // 无人机状态3.3: 能干活但是不能一直占着充电站，先去临时站，用来消磨时间等待做task
@@ -1226,10 +1344,10 @@ int64_t myAlgorithm::solve() {
     }
 
     // 获取当前毫秒时间戳（可能会有延迟问题）
-    std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp =
-        std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
-    auto current = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
-    int64_t current_time = current.count();
+    // std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp =
+    //     std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+    // auto current = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
+    // int64_t current_time = current.count();
     std::vector<std::tuple<std::string, FlightPlan>> flight_plans_to_publish;  //下发飞行任务
     DroneLimits dl = this->_task_info->drones.front().drone_limits;
     
@@ -1277,15 +1395,17 @@ int64_t myAlgorithm::solve() {
         auto flying_waypoints = generate_waypoints_by_a_star(the_drone.position, landing_position, mydrone.flying_height, myairspace);
         bool invalid_flag = containsNegOneNegOneNegOne(flying_waypoints);
         if (invalid_flag){
-            LOG(INFO) << the_drone.drone_id << "\'s current position is dangerous, do not take off now!! original flying height: " << mydrone.flying_height;
-            if (mydrone.flying_height > 70){
-                mydrone.flying_height -= 10;
-            } else {
-                mydrone.black_position_list.push_back({the_cargo.position});
-                mydrone.unfinished_cargo_ids = {-1,-1,-1};
-                mydrone.flying_height = 120;
+            if (can_change_height){
+                LOG(INFO) << the_drone.drone_id << "\'s current position is dangerous, do not take off now!! original flying height: " << mydrone.flying_height;
+                if (mydrone.flying_height > 70){
+                    mydrone.flying_height -= 10;
+                } else {
+                    mydrone.black_position_list.push_back({the_cargo.position});
+                    mydrone.unfinished_cargo_ids = {-1,-1,-1};
+                    mydrone.flying_height = 120;
+                }
+                LOG(INFO) << the_drone.drone_id << " change the flying height to: " << mydrone.flying_height;
             }
-            LOG(INFO) << the_drone.drone_id << " change the flying height to: " << mydrone.flying_height;
             mydrone.flightplan_takeoff_position = the_drone.position;
             mydrone.flightplan_land_position = {-1,-1,-1};
             mydrone.all_flying_waypoints.clear();
@@ -1299,10 +1419,10 @@ int64_t myAlgorithm::solve() {
             pickup.flight_plan_type = FlightPlanType::PLAN_TRAJECTORIES;  // 飞行计划类型：轨迹
             pickup.flight_id = std::to_string(++Algorithm::flightplan_num);
             // 获取当前毫秒时间戳（可能会有延迟问题）
-            // std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp =
-            //     std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
-            // auto current = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
-            // int64_t current_time = current.count();
+            std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp =
+                std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+            auto current = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
+            int64_t current_time = current.count();
             pickup.takeoff_timestamp = current_time + takeoff_pending_time_ms; 
             pickup.segments = pickup_waypoints;
             // 在下发飞行计划前，选手可以使用该函数自行先校验飞行计划的可行性
@@ -1357,13 +1477,15 @@ int64_t myAlgorithm::solve() {
             auto flying_waypoints = generate_waypoints_by_a_star(the_drone.position, landing_position, mydrone.flying_height, myairspace);
             bool invalid_flag = containsNegOneNegOneNegOne(flying_waypoints);
             if (invalid_flag){
-                LOG(INFO) << the_drone.drone_id << "\'s current position is dangerous, do not take off now!! original flying height: " << mydrone.flying_height;
-                if (mydrone.flying_height > 70){
-                    mydrone.flying_height -= 10;
-                } else {
-                    mydrone.flying_height = 120;
+                if (can_change_height){
+                    LOG(INFO) << the_drone.drone_id << "\'s current position is dangerous, do not take off now!! original flying height: " << mydrone.flying_height;
+                    if (mydrone.flying_height > 70){
+                        mydrone.flying_height -= 10;
+                    } else {
+                        mydrone.flying_height = 120;
+                    }
+                    LOG(INFO) << the_drone.drone_id << " change the flying height to: " << mydrone.flying_height;
                 }
-                LOG(INFO) << the_drone.drone_id << " change the flying height to: " << mydrone.flying_height;
                 mydrone.flightplan_takeoff_position = the_drone.position;
                 mydrone.flightplan_land_position = {-1,-1,-1};
                 mydrone.all_flying_waypoints.clear();
@@ -1381,10 +1503,10 @@ int64_t myAlgorithm::solve() {
                 delivery.flight_plan_type = FlightPlanType::PLAN_TRAJECTORIES;
                 delivery.flight_id = std::to_string(++Algorithm::flightplan_num);
                 // 获取当前毫秒时间戳（可能会有延迟问题）
-                // std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp =
-                //     std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
-                // auto current = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
-                // int64_t current_time = current.count();
+                std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp =
+                    std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+                auto current = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
+                int64_t current_time = current.count();
                 delivery.takeoff_timestamp = current_time + takeoff_pending_time_ms;
                 delivery.segments = delivery_traj;
                 delivery.target_cargo_ids.push_back(the_cargo.id);
@@ -1421,13 +1543,15 @@ int64_t myAlgorithm::solve() {
         auto flying_waypoints = generate_waypoints_by_a_star(the_drone.position, landing_position, mydrone.flying_height, myairspace);
         bool invalid_flag = containsNegOneNegOneNegOne(flying_waypoints);
         if (invalid_flag){
-            LOG(INFO) << the_drone.drone_id << "\'s current position is dangerous, do not take off now!! original flying height: " << mydrone.flying_height;
-            if (mydrone.flying_height > 70){
-                mydrone.flying_height -= 10;
-            } else {
-                mydrone.flying_height = 120;
+            if (can_change_height){
+                LOG(INFO) << the_drone.drone_id << "\'s current position is dangerous, do not take off now!! original flying height: " << mydrone.flying_height;
+                if (mydrone.flying_height > 70){
+                    mydrone.flying_height -= 10;
+                } else {
+                    mydrone.flying_height = 120;
+                }
+                LOG(INFO) << the_drone.drone_id << " change the flying height to: " << mydrone.flying_height;
             }
-            LOG(INFO) << the_drone.drone_id << " change the flying height to: " << mydrone.flying_height;
             mydrone.flightplan_takeoff_position = the_drone.position;
             mydrone.flightplan_land_position = {-1,-1,-1};
             mydrone.all_flying_waypoints.clear();
@@ -1441,10 +1565,10 @@ int64_t myAlgorithm::solve() {
             recharge.flight_plan_type = FlightPlanType::PLAN_TRAJECTORIES;
             recharge.flight_id = std::to_string(++Algorithm::flightplan_num);
             // 获取当前毫秒时间戳（可能会有延迟问题）
-            // std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp =
-            //     std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
-            // auto current = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
-            // int64_t current_time = current.count();
+            std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp =
+                std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+            auto current = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
+            int64_t current_time = current.count();
             recharge.takeoff_timestamp = current_time + takeoff_pending_time_ms;
             recharge.segments = recharege_traj;
 
@@ -1482,15 +1606,17 @@ int64_t myAlgorithm::solve() {
         auto flying_waypoints = generate_waypoints_by_a_star(the_drone.position, landing_position, mydrone.flying_height, myairspace);
         bool invalid_flag = containsNegOneNegOneNegOne(flying_waypoints);
         if (invalid_flag){
-            LOG(INFO) << the_drone.drone_id << "\'s current position is dangerous, do not take off now!! original flying height: " << mydrone.flying_height;
-            if (mydrone.flying_height > 70){
-                mydrone.flying_height -= 10;
-                
-            } else {
-                mydrone.black_position_list.push_back({landing_position});
-                mydrone.flying_height = 120;
+            if (can_change_height){
+                LOG(INFO) << the_drone.drone_id << "\'s current position is dangerous, do not take off now!! original flying height: " << mydrone.flying_height;
+                if (mydrone.flying_height > 70){
+                    mydrone.flying_height -= 10;
+                    
+                } else {
+                    mydrone.black_position_list.push_back({landing_position});
+                    mydrone.flying_height = 120;
+                }
+                LOG(INFO) << the_drone.drone_id << " change the flying height to: " << mydrone.flying_height;
             }
-            LOG(INFO) << the_drone.drone_id << " change the flying height to: " << mydrone.flying_height;
             mydrone.flightplan_takeoff_position = the_drone.position;
             mydrone.flightplan_land_position = {-1,-1,-1};
             mydrone.all_flying_waypoints.clear();
@@ -1504,10 +1630,10 @@ int64_t myAlgorithm::solve() {
             breaking.flight_plan_type = FlightPlanType::PLAN_TRAJECTORIES;
             breaking.flight_id = std::to_string(++Algorithm::flightplan_num);
             // 获取当前毫秒时间戳（可能会有延迟问题）
-            // std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp =
-            //     std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
-            // auto current = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
-            // int64_t current_time = current.count();
+            std::chrono::time_point<std::chrono::system_clock, std::chrono::milliseconds> tp =
+                std::chrono::time_point_cast<std::chrono::milliseconds>(std::chrono::system_clock::now());
+            auto current = std::chrono::duration_cast<std::chrono::milliseconds>(tp.time_since_epoch());
+            int64_t current_time = current.count();
             breaking.takeoff_timestamp = current_time + takeoff_pending_time_ms;
             breaking.segments = breaking_traj;
 

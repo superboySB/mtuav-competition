@@ -45,7 +45,7 @@ int main(int argc, const char* argv[]) {
         "/workspace/mtuav-competition/map/test_map.bin");
     // 用于在线比赛系统
     // auto map = mtuav::Map::CreateMapFromFile(
-    //     "/workspace/mtuav-competition/map/competition_map.bin");
+    //     "/workspace/mtuav-competition/map/final_map.bin");
     
     // 声明一个planner指针
     std::shared_ptr<Planner> planner = std::make_shared<Planner>(map);
@@ -76,8 +76,8 @@ int main(int argc, const char* argv[]) {
     LOG(INFO) << "Task num: " << task_num;
     // TODO 选手指定比赛任务索引
     // Caution!!!
-    // 通过sdk获取到3个任务，第一个和第二个任务为测试任务(获取到的任务列表索引为0和1)，可以无限次执行；
-    // 第三个任务为正式比赛任务(获取到的任务列表索引为2)，限制为最多执行5次，最终结果为5次之中最好的成绩。
+    // 通过sdk获取到2个任务，第一个任务为测试任务(获取到的任务列表索引为0)，可以无限次执行；
+    // 第二个任务为正式比赛任务(获取到的任务列表索引为1，task_id=9)，限制为最多执行5次，最终结果为5次之中最好的成绩。
     int task_idx = 0;  //////// 慎重哦！
     // 获取比赛任务指针
     auto task = planner->QueryTask(task_idx);

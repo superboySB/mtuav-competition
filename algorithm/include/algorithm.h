@@ -100,6 +100,7 @@ class myAlgorithm : public Algorithm {
     int64_t solve();
 
     // * 需要选手自行添加所需的函数
+    bool can_change_height;
     float map_min_x, map_max_x, map_min_y, map_max_y, map_min_z, map_max_z;
     std::vector<Vec3> battery_station_positions;
     std::unordered_map<std::string, MyDroneInfo> my_drone_info; 
