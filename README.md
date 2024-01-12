@@ -1,10 +1,12 @@
 # mtuav-competition
-低空经济智能飞行管理挑战赛 性能赛（BIT-LINC）
+第一届低空经济智能飞行管理挑战赛 性能赛（BIT-LINC队伍方案）
 
 目前主要参考：
 * 凹包提取算法，C++实现，打包为submodule：https://github.com/JeremyBYU/polylidar
 * 基于vis-graph的路径规划算法，GO实现，打包为so文件：https://github.com/fzipp/pathfind
 * Dockerfile中给出了其它使用过的第三方库，但均作放弃（包括OR-tools）
+
+[![image.png](https://i.postimg.cc/hGXks0zZ/image.png)](https://postimg.cc/PLkVrYM1)
 
 # 运行流程
 ## 准备
@@ -107,3 +109,8 @@ valgrind --leak-check=full ./mtuav_sdk_example 2> valgrind_output.txt
 
 ./path_finding  /workspace/mtuav-competition/params/task-drone-003.xml /workspace/mtuav-competition/params/map-drone-003.xml  /workspace/mtuav-competition/params/config.xml
 ```
+
+## 留念
+以下是个人开发过程中的留念，虽然这届比的不是很好，比如我忽视了对已知地图的“以查代算”，总想着假设我在一个开放场景，我只能做适度缓存+临时演算+极致推理加速，后来意识到这个方向有严重失误，不过得幸比赛本身赋予的高自由度，我还是把自己的想法实现到了最后一刻，并且也混了个复赛第7的完赛留念（btw前6名都给老多钱钱了┭┮﹏┭┮）。
+
+[以下是Demo留念，明年再战！](docs/demo.mp4)
