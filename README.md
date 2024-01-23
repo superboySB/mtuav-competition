@@ -10,7 +10,7 @@
 
 # 运行流程
 ## 准备
-下拉美团提供的可视化docker镜像：
+下拉美团提供的可视化docker镜像，如果已经拉不下来了可以下载[备份](https://superboysb-my.sharepoint.cn/:u:/g/personal/admin_superboysb_partner_onmschina_cn/ESGHBLhxWMtCj1YFjvmZvkIBl5KKN8GvGvu46fA0JQ4KTg?e=q69rz0)然后`docker load`：
 ```sh
 docker pull marcobright2023/mtuav-competition:standalone-final
 ```
